@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PQCServer — Create Account</title>
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+<div class="topbar">
+  <a href="/" class="topbar-logo"><div class="logo-pulse"></div>PQCServer</a>
+  <nav class="topbar-nav" id="topbar-nav">
+    <a href="/login.html" class="hide-mobile">Log in</a>
+    <a href="/register.html" class="btn-nav">Register free</a>
+  </nav>
+</div>
+<div class="page" style="max-width:460px">
+  <div class="step-label">Get started</div>
+  <div class="page-title">Create your account</div>
+  <p class="page-sub">Free. No credit card. Ready in 60 seconds.</p>
+  <div class="card">
+    <div class="card-body">
+      <div class="form-group">
+        <label>Username <span style="color:var(--text-dim)">(3-32 chars, letters/numbers/_)</span></label>
+        <input type="text" id="username" placeholder="e.g. alice_smith" maxlength="32"
+               autocomplete="username" oninput="checkUsername(this.value)">
+        <div id="username-status" style="margin-top:5px"></div>
+      </div>
+      <div class="form-group">
+        <label>Email address</label>
+        <input type="email" id="email" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>Display Name <span style="color:var(--text-dim)">(optional)</span></label>
+        <input type="text" id="display-name" placeholder="Alice Smith" maxlength="64">
+      </div>
+      <div class="form-group">
+        <label>Password <span style="color:var(--text-dim)">(min 8 characters)</span></label>
+        <input type="password" id="password" placeholder="Choose a strong password" autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label>Confirm Password</label>
+        <input type="password" id="password2" placeholder="Repeat your password" autocomplete="new-password">
+      </div>
+      <button class="btn btn-primary" id="reg-btn" onclick="doRegister()"
+              style="width:100%;justify-content:center;margin-top:.5rem">
+        Create account &rarr;
+      </button>
+      <div id="reg-status"></div>
+      <div style="text-align:center;margin-top:1rem;font-size:.72rem;color:var(--text-dim)">
+        Already have an account? <a href="/login.html" style="color:var(--accent)">Log in &rarr;</a>
+      </div>
+    </div>
+  </div>
+  <div class="info-box" style="margin-top:1rem">
+    After registration you will generate your <strong>post-quantum keypair</strong> (ML-KEM + ML-DSA).
+    Your private keys are generated in your browser and never sent to our server.
+  </div>
+</div>
+<footer>
+  <strong style="color:var(--text)">PQCServer</strong> &mdash; Zero-knowledge &middot; No tracking
+  <br><a href="/">Home</a> &middot; <a href="/login.html">Log in</a>
+</footer>
+<script src="/assets/auth.js"></script>
+<script>
+PQC.initTopbar().then(s => { if (s) window.location.href = "/dashboard.html"; });
+["username","email","display-name","password","password2"].forEach(id => {
+  document.getElementById(id)?.addEventListener("keydown", e => { if (e.key==="Enter") doRegister(); });
+});
+let usernameOk = false, usernameTimer = null;
+function setStatus(id,type,msg){ const e=document.getElementById(id); if(e) e.innerHTML=`<div class="status status-${type}">${msg}</div>`; }
+window.checkUsername = function(val) {
+  clearTimeout(usernameTimer);
+  val = val.toLowerCase().replace(/[^a-z0-9_]/g,"");
+  document.getElementById("username").value = val;
+  usernameOk = false;
+  if (val.length < 3) { setStatus("username-status","info","Minimum 3 characters"); return; }
+  usernameTimer = setTimeout(async () => {
+    try {
+      const d = await (await fetch("/api/register.php?check="+val)).json();
+      if (d.available) { setStatus("username-status","ok","\u2713 Username available"); usernameOk=true; }
+      else { setStatus("username-status","fail","\u2717 Username already taken"); usernameOk=false; }
+    } catch(e) { setStatus("username-status","warn","Could not check availability"); }
+  }, 500);
+};
+async function doRegister() {
+  const username=document.getElementById("username").value.trim();
+  const email=document.getElementById("email").value.trim();
+  const displayName=document.getElementById("display-name").value.trim();
+  const password=document.getElementById("password").value;
+  const password2=document.getElementById("password2").value;
+  const btn=document.getElementById("reg-btn");
+  if (!username)           return setStatus("reg-status","fail","\u2717 Choose a username");
+  if (!usernameOk)         return setStatus("reg-status","fail","\u2717 Username not available");
+  if (!email)              return setStatus("reg-status","fail","\u2717 Enter your email");
+  if (password.length < 8) return setStatus("reg-status","fail","\u2717 Password min 8 characters");
+  if (password!==password2)return setStatus("reg-status","fail","\u2717 Passwords do not match");
+  btn.disabled=true;
+  setStatus("reg-status","info","<span class=\"spinner\"></span> Creating account\u2026");
+  try {
+    const d = await (await fetch("/api/register.php",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({username,email,display_name:displayName,password})})).json();
+    if (d.ok) { setStatus("reg-status","ok","\u2713 Account created! Redirecting\u2026"); setTimeout(()=>window.location.href=d.redirect||"/keygen.html",700); }
+    else { setStatus("reg-status","fail","\u2717 "+d.error); btn.disabled=false; }
+  } catch(e) { setStatus("reg-status","fail","\u2717 Network error."); btn.disabled=false; }
+}
+</script>
+</body>
+</html>

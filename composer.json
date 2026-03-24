@@ -1,0 +1,11 @@
+{
+  "name": "pqcserver/pqcserver",
+  "description": "Post-Quantum Encrypted Messaging Server",
+  "require": {
+    "php": ">=8.1",
+    "mongodb/mongodb": "^1.16"
+  },
+  "config": {
+    "optimize-autoloader": true
+  }
+}

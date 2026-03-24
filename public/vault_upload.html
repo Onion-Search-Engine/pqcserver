@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PQCServer — Upload to Vault</title>
+<link rel="stylesheet" href="/assets/style.css">
+<style>
+.drop-area {
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  padding: 3rem 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all .2s;
+  position: relative;
+}
+.drop-area:hover, .drop-area.drag-over {
+  border-color: rgba(0,212,255,.45);
+  background: rgba(0,212,255,.03);
+}
+.drop-area input[type=file] {
+  position: absolute; inset: 0; opacity: 0;
+  cursor: pointer; width: 100%; height: 100%;
+}
+.drop-icon { font-size: 2.5rem; margin-bottom: .8rem; }
+.drop-text { font-size: .82rem; color: var(--text-mid); line-height: 1.6; }
+.file-info {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 6px; padding: 12px 16px; margin-top: 10px;
+}
+.file-icon { font-size: 1.8rem; flex-shrink: 0; }
+.file-meta { flex: 1; min-width: 0; }
+.file-name { font-size: .85rem; color: var(--bright); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.file-size { font-size: .7rem; color: var(--text-dim); margin-top: 2px; }
+.remove-file { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 1.2rem; padding: 4px; transition: color .2s; }
+.remove-file:hover { color: var(--red); }
+.progress-wrap { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; margin-top: 8px; display: none; }
+.progress-bar  { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), #7c3aed); transition: width .3s ease; border-radius: 3px; }
+.progress-label { font-size: .7rem; color: var(--text-dim); margin-top: 5px; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="/" class="topbar-logo"><div class="logo-pulse"></div>PQCServer</a>
+  <nav class="topbar-nav" id="topbar-nav"></nav>
+</div>
+
+<div class="page">
+  <div class="step-label">Vault</div>
+  <div class="page-title">Upload to your Vault</div>
+  <p class="page-sub">
+    Files are encrypted in your browser before upload using your ML-KEM public key.
+    Only you can decrypt them. Files are stored permanently until you delete them.
+  </p>
+
+  <div class="info-box">
+    🔒 <strong>Zero-knowledge encryption.</strong>
+    The server stores only the encrypted file — it cannot read your content.
+    Keep your ML-KEM private key safe — without it, files cannot be decrypted.
+  </div>
+
+  <!-- STEP 1: File selection -->
+  <div class="card">
+    <div class="card-head"><span class="accent">1</span> — Select file</div>
+    <div class="card-body">
+      <div class="drop-area" id="drop-area">
+        <input type="file" id="file-input" onchange="onFileSelected(this.files[0])">
+        <div class="drop-icon">📁</div>
+        <div class="drop-text">
+          Click to select or drag &amp; drop a file<br>
+          <span style="font-size:.7rem;color:var(--text-dim)">Any type · Any size · Encrypted before upload</span>
+        </div>
+      </div>
+      <div id="file-info" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- STEP 2: Your public key -->
+  <div class="card">
+    <div class="card-head"><span class="accent">2</span> — Your ML-KEM Public Key</div>
+    <div class="card-body">
+      <div class="info-box" style="margin-bottom:.8rem">
+        The file will be encrypted with <strong>your own public key</strong> — only your private key can decrypt it.
+        Your public key is loaded automatically if you are registered.
+      </div>
+      <div class="form-group">
+        <label>ML-KEM Public Key <span style="color:var(--text-dim)">(auto-loaded from your profile)</span></label>
+        <textarea id="pub-key" placeholder="Loading your public key…" rows="3" style="font-size:.68rem"></textarea>
+        <div id="key-status" style="margin-top:5px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3: Metadata -->
+  <div class="card">
+    <div class="card-head"><span class="accent">3</span> — Details (optional)</div>
+    <div class="card-body">
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Tags <span style="color:var(--text-dim)">(comma separated)</span></label>
+          <input type="text" id="tags-input" placeholder="work, contracts, 2026">
+        </div>
+        <div class="form-group">
+          <label>Note <span style="color:var(--text-dim)">(optional description)</span></label>
+          <input type="text" id="note-input" placeholder="Short description…" maxlength="500">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- UPLOAD BUTTON -->
+  <div class="card">
+    <div class="card-body">
+      <div class="progress-wrap" id="progress-wrap">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+      <div class="progress-label" id="progress-label"></div>
+      <div class="btn-row" style="margin-top:.8rem">
+        <button class="btn btn-primary" id="upload-btn" onclick="uploadToVault()">
+          🔒 Encrypt &amp; Upload to Vault
+        </button>
+        <a href="/vault.html" class="btn btn-ghost">← Back to Vault</a>
+      </div>
+      <div id="upload-status"></div>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div id="result-card" style="display:none">
+    <div class="card" style="border-color:rgba(0,229,160,.3)">
+      <div class="card-head" style="color:var(--green)">✓ File saved to your Vault</div>
+      <div class="card-body">
+        <div class="form-group">
+          <label>Shareable shortlink</label>
+          <div class="output-block">
+            <textarea id="shortlink-out" readonly rows="1"></textarea>
+            <button class="copy-btn" onclick="copyField('shortlink-out')">copy</button>
+          </div>
+        </div>
+        <p style="font-size:.72rem;color:var(--text-dim);margin-top:.5rem">
+          Share this link so others can download and decrypt the file.<br>
+          The file stays in your vault permanently — you can generate more links anytime.
+        </p>
+        <div class="btn-row">
+          <a href="/vault.html" class="btn btn-success">📁 Go to Vault</a>
+          <button class="btn btn-ghost" onclick="resetForm()">↺ Upload another file</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <strong style="color:var(--text)">PQCServer Vault</strong> — Files encrypted before upload · Zero-knowledge · Permanent storage
+  <br><a href="/vault.html">My Vault</a> · <a href="/dashboard.html">Dashboard</a> · <a href="/">Home</a>
+</footer>
+
+<script src="/assets/auth.js"></script>
+<script type="module">
+import { loadCrypto, encryptAndUploadFile, toB64, fromB64 } from '/assets/crypto.js';
+
+let selectedFile = null;
+let session      = null;
+
+async function init() {
+  session = await PQC.requireAuth();
+  if (!session) return;
+
+  // Auto-load user's public key
+  try {
+    const r = await fetch(`/api/pubkey.php?u=${session.user.username}`);
+    const d = await r.json();
+    if (d.ok && d.public_key_kem) {
+      document.getElementById('pub-key').value = d.public_key_kem;
+      setStatus('key-status', 'ok', '✓ Your ML-KEM public key loaded');
+    } else {
+      setStatus('key-status', 'warn', '⚠ No keys found. <a href="/keygen.html" style="color:var(--accent)">Generate your keys first →</a>');
+    }
+  } catch(e) {
+    setStatus('key-status', 'warn', '⚠ Could not load your key — paste it manually');
+  }
+
+  setupDragDrop();
+}
+
+function setupDragDrop() {
+  const area = document.getElementById('drop-area');
+  area.addEventListener('dragover',  e => { e.preventDefault(); area.classList.add('drag-over'); });
+  area.addEventListener('dragleave', () => area.classList.remove('drag-over'));
+  area.addEventListener('drop', e => {
+    e.preventDefault();
+    area.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) onFileSelected(e.dataTransfer.files[0]);
+  });
+}
+
+window.onFileSelected = function(file) {
+  if (!file) return;
+  selectedFile = file;
+  document.getElementById('drop-area').style.display = 'none';
+  document.getElementById('file-info').style.display = 'block';
+  document.getElementById('file-info').innerHTML = `
+    <div class="file-info">
+      <div class="file-icon">${getFileIcon(file.type)}</div>
+      <div class="file-meta">
+        <div class="file-name">${escHtml(file.name)}</div>
+        <div class="file-size">${formatSize(file.size)} · ${file.type || 'unknown type'}</div>
+      </div>
+      <button class="remove-file" onclick="clearFile()">✕</button>
+    </div>`;
+};
+
+window.clearFile = function() {
+  selectedFile = null;
+  document.getElementById('file-input').value = '';
+  document.getElementById('drop-area').style.display = 'block';
+  document.getElementById('file-info').style.display = 'none';
+  document.getElementById('file-info').innerHTML = '';
+};
+
+function setStatus(id, type, html) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = `<div class="status status-${type}">${html}</div>`;
+}
+
+function setProgress(pct, label) {
+  const wrap = document.getElementById('progress-wrap');
+  const bar  = document.getElementById('progress-bar');
+  const lbl  = document.getElementById('progress-label');
+  wrap.style.display = pct > 0 ? 'block' : 'none';
+  bar.style.width    = pct + '%';
+  if (lbl) lbl.textContent = label || '';
+}
+
+window.uploadToVault = async function() {
+  if (!selectedFile) { setStatus('upload-status','fail','✗ Select a file first'); return; }
+
+  const pubKeyB64 = document.getElementById('pub-key').value.trim();
+  if (!pubKeyB64)  { setStatus('upload-status','fail','✗ Your ML-KEM public key is required'); return; }
+
+  const tagsRaw = document.getElementById('tags-input').value;
+  const tags    = tagsRaw.split(',').map(t => t.trim()).filter(Boolean).slice(0, 10);
+  const note    = document.getElementById('note-input').value.trim();
+
+  const btn = document.getElementById('upload-btn');
+  btn.disabled = true;
+  setProgress(1, 'Loading crypto library…');
+
+  try {
+    await loadCrypto();
+
+    // Derive shared secret from our own public key
+    // We encapsulate to our own pubkey — we can decapsulate with our private key
+    const { default: pqc } = await import('https://esm.sh/pqc@1.0.13');
+    // Actually use crypto.js encryptAndUploadFile which handles this
+    // We need a sharedSecret — use a self-encryption approach:
+    // encapsulate to own pubkey → save KEM ciphertext in vault metadata
+    // so we can recover sharedSecret later for decryption
+
+    const pubKey = fromB64(pubKeyB64);
+    let scheme;
+    if      (pubKey.length === 800)  scheme = pqc.ml_kem.ml_kem512;
+    else if (pubKey.length === 1184) scheme = pqc.ml_kem.ml_kem768;
+    else if (pubKey.length === 1568) scheme = pqc.ml_kem.ml_kem1024;
+    else throw new Error(`Unknown key length: ${pubKey.length} bytes`);
+
+    const { cipherText, sharedSecret } = scheme.encapsulate(pubKey);
+    const kemCtB64 = toB64(cipherText);
+
+    setProgress(5, 'Encrypting and uploading…');
+
+    // Upload encrypted file chunks
+    const fileId = await encryptAndUploadFile(sharedSecret, selectedFile, (stage, pct) => {
+      const labels = {
+        reading:    'Reading file…',
+        encrypting: 'Encrypting…',
+        uploading:  'Uploading chunks…',
+        done:       'Upload complete!',
+      };
+      setProgress(Math.max(5, pct), labels[stage] || `${pct}%`);
+    });
+
+    setProgress(95, 'Saving to vault…');
+
+    // Save vault entry (includes KEM ciphertext so user can recover sharedSecret)
+    const r = await fetch('/api/vault_upload.php', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        file_id:             fileId,
+        filename:            selectedFile.name,
+        mime_type:           selectedFile.type || 'application/octet-stream',
+        size_bytes:          selectedFile.size,
+        public_key_kem_used: pubKeyB64,
+        kem_ciphertext:      kemCtB64,  // stored so user can recover sharedSecret
+        tags,
+        note,
+      }),
+    });
+
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Server error');
+
+    setProgress(100, '✓ Saved to vault!');
+    document.getElementById('shortlink-out').value = d.shortlink;
+    document.getElementById('result-card').style.display = 'block';
+    document.getElementById('result-card').scrollIntoView({ behavior:'smooth', block:'center' });
+    setStatus('upload-status', 'ok', '✓ File saved to vault permanently');
+
+  } catch(e) {
+    setStatus('upload-status', 'fail', '✗ ' + e.message);
+    setProgress(0, '');
+  }
+  btn.disabled = false;
+};
+
+window.resetForm = function() {
+  clearFile();
+  document.getElementById('tags-input').value = '';
+  document.getElementById('note-input').value = '';
+  document.getElementById('result-card').style.display = 'none';
+  document.getElementById('upload-status').innerHTML = '';
+  setProgress(0, '');
+};
+
+window.copyField = function(id) {
+  const el = document.getElementById(id); if (!el) return;
+  navigator.clipboard.writeText(el.value).then(() => {
+    const btn = el.closest('.output-block')?.querySelector('.copy-btn');
+    if (btn) { btn.textContent='copied!'; setTimeout(()=>btn.textContent='copy',1500); }
+  });
+};
+
+function getFileIcon(mime) {
+  if (mime.startsWith('image/'))       return '🖼️';
+  if (mime.startsWith('video/'))       return '🎬';
+  if (mime.startsWith('audio/'))       return '🎵';
+  if (mime.includes('pdf'))            return '📄';
+  if (mime.includes('zip')||mime.includes('tar')||mime.includes('gz')) return '🗜️';
+  if (mime.includes('word')||mime.includes('document')) return '📝';
+  if (mime.includes('sheet')||mime.includes('excel'))   return '📊';
+  if (mime.includes('presentation'))   return '📋';
+  if (mime.startsWith('text/'))        return '📃';
+  return '📁';
+}
+
+function formatSize(b) {
+  if (b < 1024)       return b + ' B';
+  if (b < 1048576)    return (b/1024).toFixed(1) + ' KB';
+  if (b < 1073741824) return (b/1048576).toFixed(1) + ' MB';
+  return (b/1073741824).toFixed(2) + ' GB';
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+init();
+</script>
+</body>
+</html>

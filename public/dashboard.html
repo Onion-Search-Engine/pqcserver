@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PQCServer &mdash; Dashboard</title>
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+<div class="topbar">
+  <a href="/" class="topbar-logo"><div class="logo-pulse"></div>PQCServer</a>
+  <nav class="topbar-nav" id="topbar-nav"></nav>
+</div>
+
+<div class="page">
+  <div class="step-label">Dashboard</div>
+  <div class="page-title" id="dash-title">Welcome back</div>
+  <p class="page-sub">Your account and keys overview.</p>
+
+  <!-- NO KEYS WARNING -->
+  <div id="no-keys-warn" style="display:none">
+    <div class="info-box warn">
+      <strong>&#9888; You have not set up your keys yet.</strong>
+      Generate your post-quantum keypair to start receiving encrypted messages.
+      <div class="btn-row" style="margin-top:.8rem">
+        <a href="/keygen.html" class="btn btn-primary">&#128273; Generate my keys &rarr;</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROFILE CARD -->
+  <div class="card">
+    <div class="card-head"><span class="accent">Your Profile</span></div>
+    <div class="card-body">
+      <div class="grid-2">
+        <div>
+          <div style="font-size:.65rem;color:var(--text-dim);letter-spacing:.5px;margin-bottom:4px">USERNAME</div>
+          <div style="font-size:1.1rem;color:var(--bright)" id="d-username">&mdash;</div>
+        </div>
+        <div>
+          <div style="font-size:.65rem;color:var(--text-dim);letter-spacing:.5px;margin-bottom:4px">DISPLAY NAME</div>
+          <div style="font-size:1.1rem;color:var(--bright)" id="d-displayname">&mdash;</div>
+        </div>
+        <div>
+          <div style="font-size:.65rem;color:var(--text-dim);letter-spacing:.5px;margin-bottom:4px">EMAIL</div>
+          <div style="font-size:.85rem;color:var(--text-mid)" id="d-email">&mdash;</div>
+        </div>
+        <div>
+          <div style="font-size:.65rem;color:var(--text-dim);letter-spacing:.5px;margin-bottom:4px">KEYS STATUS</div>
+          <div id="d-keys">&mdash;</div>
+        </div>
+        <div>
+          <div style="font-size:.65rem;color:var(--text-dim);letter-spacing:.5px;margin-bottom:4px">PUBLIC PROFILE</div>
+          <a id="d-profile" href="#" style="font-size:.82rem;color:var(--accent)">&mdash;</a>
+        </div>
+      </div>
+      <div class="btn-row" style="margin-top:1.2rem">
+        <a href="/keygen.html" class="btn btn-ghost">&#128273; Update Keys</a>
+        <a id="d-profile-btn" href="#" class="btn btn-ghost">&#128100; View Public Profile</a>
+        <a href="/encrypt.html" class="btn btn-primary">&#128274; Encrypt Message</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- MY PUBLIC KEY -->
+  <div class="card" id="keys-card" style="display:none">
+    <div class="card-head"><span class="accent">Your Public Keys</span> &mdash; share these so others can encrypt messages for you</div>
+    <div class="card-body">
+      <div class="form-group">
+        <label>ML-KEM Public Key (for encryption)</label>
+        <div class="output-block">
+          <textarea id="d-kem-pub" readonly rows="2" style="font-size:.65rem;color:var(--accent)"></textarea>
+          <button class="copy-btn" onclick="copyField('d-kem-pub')">copy</button>
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:.8rem">
+        <label>ML-DSA Public Key (for signature verification)</label>
+        <div class="output-block">
+          <textarea id="d-dsa-pub" readonly rows="2" style="font-size:.65rem;color:var(--accent)"></textarea>
+          <button class="copy-btn" onclick="copyField('d-dsa-pub')">copy</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- VAULT SUMMARY -->
+  <div class="card" id="vault-card">
+    <div class="card-head"><span class="accent">📁 My Vault</span> — Encrypted file storage</div>
+    <div class="card-body">
+      <div class="grid-2" style="margin-bottom:1rem">
+        <div>
+          <div style="font-size:.65rem;color:var(--text-dim);letter-spacing:.5px;margin-bottom:4px">FILES STORED</div>
+          <div style="font-size:1.4rem;color:var(--bright);font-family:var(--sans);font-weight:800" id="vault-count">—</div>
+        </div>
+        <div>
+          <div style="font-size:.65rem;color:var(--text-dim);letter-spacing:.5px;margin-bottom:4px">TOTAL SIZE</div>
+          <div style="font-size:1.4rem;color:var(--bright);font-family:var(--sans);font-weight:800" id="vault-size">—</div>
+        </div>
+      </div>
+      <div class="info-box" style="margin-bottom:1rem">
+        Files in your vault are <strong>encrypted with your ML-KEM public key</strong> and stored permanently.
+        Only your private key can decrypt them.
+      </div>
+      <div class="btn-row">
+        <a href="/vault.html" class="btn btn-primary">📁 Open Vault</a>
+        <a href="/vault_upload.html" class="btn btn-ghost">🔒 Upload file</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUICK ACTIONS -->
+  <div class="card">
+    <div class="card-head"><span class="accent">Quick Actions</span></div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border-radius:6px;overflow:hidden">
+        <a href="/encrypt.html" style="background:var(--surface2);padding:1.2rem;text-align:center;text-decoration:none;transition:background .2s" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background='var(--surface2)'">
+          <div style="font-size:1.5rem;margin-bottom:.5rem">&#128274;</div>
+          <div style="font-size:.78rem;color:var(--bright);font-family:var(--sans);font-weight:700">Encrypt</div>
+          <div style="font-size:.65rem;color:var(--text-dim);margin-top:3px">Send a secure message</div>
+        </a>
+        <a href="/keygen.html" style="background:var(--surface2);padding:1.2rem;text-align:center;text-decoration:none;transition:background .2s" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background='var(--surface2)'">
+          <div style="font-size:1.5rem;margin-bottom:.5rem">&#128273;</div>
+          <div style="font-size:.78rem;color:var(--bright);font-family:var(--sans);font-weight:700">Keys</div>
+          <div style="font-size:.65rem;color:var(--text-dim);margin-top:3px">Generate or update keys</div>
+        </a>
+        <a id="qa-profile" href="#" style="background:var(--surface2);padding:1.2rem;text-align:center;text-decoration:none;transition:background .2s" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background='var(--surface2)'">
+          <div style="font-size:1.5rem;margin-bottom:.5rem">&#128100;</div>
+          <div style="font-size:.78rem;color:var(--bright);font-family:var(--sans);font-weight:700">Profile</div>
+          <div style="font-size:.65rem;color:var(--text-dim);margin-top:3px">Your public page</div>
+        </a>
+        <a href="/timestamp.html" style="background:var(--surface2);padding:1.2rem;text-align:center;text-decoration:none;transition:background .2s" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background='var(--surface2)'">
+          <div style="font-size:1.5rem;margin-bottom:.5rem">&#9997;&#65039;</div>
+          <div style="font-size:.78rem;color:var(--bright);font-family:var(--sans);font-weight:700">Sign Document</div>
+          <div style="font-size:.65rem;color:var(--text-dim);margin-top:3px">Cryptographic timestamp</div>
+        </a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <strong style="color:var(--text)">PQCServer</strong> &mdash; Zero-knowledge &middot; No tracking
+  <br><a href="/">Home</a> &middot; <a href="/encrypt.html">Encrypt</a> &middot; <a href="/keygen.html">Keys</a>
+</footer>
+
+<script src="/assets/auth.js"></script>
+<script>
+(async () => {
+  const session = await PQC.initTopbar();
+  if (!session) { window.location.href = "/login.html?next=/dashboard.html"; return; }
+
+  const u = session.user;
+
+  // Load vault stats
+  fetch('/api/vault_list.php?limit=1').then(r=>r.json()).then(d=>{
+    if (d.ok) {
+      document.getElementById('vault-count').textContent = d.stats.total_files;
+      document.getElementById('vault-size').textContent  = formatVaultSize(d.stats.total_bytes);
+    }
+  }).catch(()=>{});
+
+  function formatVaultSize(b) {
+    if (!b) return '0 B';
+    if (b < 1024)       return b + ' B';
+    if (b < 1048576)    return (b/1024).toFixed(1) + ' KB';
+    if (b < 1073741824) return (b/1048576).toFixed(1) + ' MB';
+    return (b/1073741824).toFixed(2) + ' GB';
+  }
+  document.getElementById("dash-title").textContent = "Welcome, " + (u.display_name || u.username);
+  document.getElementById("d-username").textContent   = "@" + u.username;
+  document.getElementById("d-displayname").textContent = u.display_name || u.username;
+  document.getElementById("d-email").textContent      = u.email;
+
+  const profileUrl = "https://pqcserver.com/u/" + u.username;
+  document.getElementById("d-profile").textContent = profileUrl;
+  document.getElementById("d-profile").href        = "/u/" + u.username;
+  document.getElementById("d-profile-btn").href    = "/u/" + u.username;
+  document.getElementById("qa-profile").href       = "/u/" + u.username;
+
+  if (session.has_keys) {
+    document.getElementById("d-keys").innerHTML = '<span class="status status-ok" style="display:inline-flex">&#10003; ML-KEM + ML-DSA configured</span>';
+    // Load public keys
+    try {
+      const r = await fetch("/api/pubkey.php?u=" + u.username);
+      const d = await r.json();
+      if (d.ok) {
+        document.getElementById("keys-card").style.display = "block";
+        document.getElementById("d-kem-pub").value = d.public_key_kem;
+        document.getElementById("d-dsa-pub").value = d.public_key_dsa || "(not set)";
+      }
+    } catch(e) {}
+  } else {
+    document.getElementById("d-keys").innerHTML = '<span class="status status-warn" style="display:inline-flex">&#9888; No keys set up</span>';
+    document.getElementById("no-keys-warn").style.display = "block";
+  }
+})();
+
+window.copyField = function(id) {
+  const el = document.getElementById(id); if (!el) return;
+  navigator.clipboard.writeText(el.value).then(() => {
+    const btn = el.closest(".output-block")?.querySelector(".copy-btn");
+    if (btn) { btn.textContent="copied!"; setTimeout(()=>btn.textContent="copy",1500); }
+  });
+};
+</script>
+</body>
+</html>

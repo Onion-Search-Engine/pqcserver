@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PQCServer — Verify Certificate</title>
+<meta name="description" content="Verify a PQCServer cryptographic timestamp certificate. Check document authenticity and signature validity.">
+<link rel="stylesheet" href="/assets/style.css">
+<style>
+.verify-result {
+  border-radius:8px; padding:2rem; text-align:center; margin-bottom:1.5rem;
+}
+.verify-ok   { background:rgba(0,229,160,.06); border:2px solid rgba(0,229,160,.3); }
+.verify-fail { background:rgba(255,71,87,.06);  border:2px solid rgba(255,71,87,.3); }
+.verify-icon { font-size:3rem; margin-bottom:.8rem; }
+.verify-title { font-family:var(--sans); font-size:1.4rem; font-weight:800; margin-bottom:.4rem; }
+.verify-ok   .verify-title { color:var(--green); }
+.verify-fail .verify-title { color:var(--red); }
+.cert-row {
+  display:flex; align-items:flex-start; gap:1rem;
+  padding:10px 0; border-bottom:1px solid var(--border);
+  font-size:.78rem;
+}
+.cert-row:last-child { border-bottom:none; }
+.cert-label { color:var(--text-dim); font-size:.65rem; letter-spacing:.5px; text-transform:uppercase; min-width:130px; flex-shrink:0; padding-top:2px; }
+.cert-value { color:var(--text); word-break:break-all; }
+.cert-value.mono { font-size:.65rem; color:var(--accent); }
+.hash-display {
+  font-family:var(--mono); font-size:.65rem; color:var(--accent);
+  background:var(--bg); border:1px solid var(--border);
+  border-radius:4px; padding:8px 12px; word-break:break-all; margin-top:5px;
+}
+.drop-area {
+  border:2px dashed var(--border); border-radius:8px;
+  padding:2rem 1.5rem; text-align:center; cursor:pointer; transition:all .2s; position:relative;
+}
+.drop-area:hover, .drop-area.drag-over {
+  border-color:rgba(0,212,255,.4); background:rgba(0,212,255,.03);
+}
+.drop-area input[type=file] {
+  position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%;
+}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="/" class="topbar-logo"><div class="logo-pulse"></div>PQCServer</a>
+  <nav class="topbar-nav" id="topbar-nav"></nav>
+</div>
+
+<div class="page">
+  <div class="step-label">Verify</div>
+  <div class="page-title">Verify a certificate</div>
+  <p class="page-sub">
+    Check that a document matches a PQCServer timestamp certificate.
+    Verification is entirely cryptographic — it does not require trusting PQCServer.
+  </p>
+
+  <!-- LOAD CERTIFICATE -->
+  <div class="card" id="load-card">
+    <div class="card-head"><span class="accent">Certificate</span></div>
+    <div class="card-body">
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Certificate ID or verify URL</label>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="cert-id-input"
+              placeholder="ts_xxxxxxxxxx or full URL"
+              style="flex:1">
+            <button class="btn btn-primary" onclick="loadCertificate()"
+              style="white-space:nowrap">Load →</button>
+          </div>
+          <div id="load-status" style="margin-top:5px"></div>
+        </div>
+        <div class="form-group">
+          <label>— or paste certificate JSON directly —</label>
+          <textarea id="cert-json-input" rows="3"
+            placeholder='Paste the certificate .json file content here…'
+            style="font-size:.68rem"
+            oninput="onCertJsonPaste()"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CERTIFICATE DETAILS (shown after loading) -->
+  <div id="cert-details" style="display:none">
+    <div class="card">
+      <div class="card-head"><span class="accent">Certificate details</span></div>
+      <div class="card-body">
+        <div class="cert-row"><span class="cert-label">Certificate ID</span><span class="cert-value" id="v-id"></span></div>
+        <div class="cert-row"><span class="cert-label">Signer</span><span class="cert-value" id="v-signer"></span></div>
+        <div class="cert-row"><span class="cert-label">Timestamp (UTC)</span><span class="cert-value" id="v-time"></span></div>
+        <div class="cert-row"><span class="cert-label">Algorithm</span><span class="cert-value" id="v-algo"></span></div>
+        <div class="cert-row"><span class="cert-label">Document</span><span class="cert-value" id="v-filename"></span></div>
+        <div class="cert-row">
+          <span class="cert-label">Document hash</span>
+          <span class="cert-value">
+            <span class="cert-value mono" id="v-hash"></span>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- VERIFY DOCUMENT -->
+    <div class="card">
+      <div class="card-head"><span class="accent">Verify your document</span></div>
+      <div class="card-body">
+        <p style="font-size:.78rem;color:var(--text-mid);margin-bottom:1rem;line-height:1.7">
+          To confirm this certificate matches your document, select the original file below.
+          Its SHA-256 hash will be computed locally and compared to the certificate.
+        </p>
+
+        <div class="drop-area" id="verify-drop">
+          <input type="file" id="verify-file" onchange="onVerifyFile(this.files[0])">
+          <div style="font-size:1.5rem;margin-bottom:.5rem">📄</div>
+          <div style="font-size:.75rem;color:var(--text-dim)">Drop your document here to verify</div>
+        </div>
+
+        <div id="verify-file-info" style="display:none;margin-top:.8rem">
+          <div style="font-size:.75rem;color:var(--text-mid)">Computed hash:</div>
+          <div class="hash-display" id="verify-hash"></div>
+        </div>
+
+        <div id="verify-status" style="margin-top:.8rem"></div>
+
+        <div class="btn-row" style="margin-top:1rem">
+          <button class="btn btn-success" id="verify-btn" onclick="verifySig()" disabled>
+            ✔️ Verify signature
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- VERIFICATION RESULT -->
+    <div id="verify-result" style="display:none"></div>
+
+  </div>
+</div>
+
+<footer>
+  <strong style="color:var(--text)">PQCServer</strong> — Certificate verification is fully cryptographic and client-side.
+  <br><a href="/">Home</a> · <a href="/sign.html">Sign a document</a> · <a href="/timestamp.html">About timestamps</a>
+</footer>
+
+<script src="/assets/auth.js"></script>
+<script type="module">
+import { loadCrypto, fromB64 } from '/assets/crypto.js';
+
+PQC.initTopbar();
+
+let certObj      = null;
+let verifyHash   = null;
+
+// ── Auto-load from URL param ───────────────────────────────────────────────
+const params = new URLSearchParams(window.location.search);
+const urlId  = params.get('id');
+if (urlId) {
+  document.getElementById('cert-id-input').value = urlId;
+  loadCertificate();
+}
+
+function setLoadStatus(type, msg) {
+  document.getElementById('load-status').innerHTML =
+    `<div class="status status-${type}">${msg}</div>`;
+}
+function setVerifyStatus(type, msg) {
+  document.getElementById('verify-status').innerHTML =
+    `<div class="status status-${type}">${msg}</div>`;
+}
+
+// ── Load certificate from server ───────────────────────────────────────────
+window.loadCertificate = async function() {
+  let input = document.getElementById('cert-id-input').value.trim();
+  if (!input) { setLoadStatus('fail', '✗ Enter a certificate ID or URL'); return; }
+
+  // Extract ID from URL if needed
+  const match = input.match(/ts_[a-z0-9]+/i);
+  if (match) input = match[0];
+
+  setLoadStatus('info', '<span class="spinner"></span> Loading certificate…');
+
+  try {
+    const r = await fetch(`/api/timestamp.php?id=${encodeURIComponent(input)}`);
+    const d = await r.json();
+    if (!d.ok) { setLoadStatus('fail', '✗ ' + (d.error || 'Certificate not found')); return; }
+    showCertificate(d);
+    setLoadStatus('ok', '✓ Certificate loaded');
+  } catch(e) {
+    setLoadStatus('fail', '✗ Network error: ' + e.message);
+  }
+};
+
+// ── Paste JSON directly ────────────────────────────────────────────────────
+window.onCertJsonPaste = function() {
+  const raw = document.getElementById('cert-json-input').value.trim();
+  if (!raw || raw.length < 50) return;
+  try {
+    const d = JSON.parse(raw);
+    if (!d.id || !d.document_hash) return;
+    showCertificate({
+      ok:              true,
+      id:              d.id,
+      document_hash:   d.document_hash,
+      signature:       d.signature,
+      public_key_dsa:  d.public_key_dsa,
+      display_name:    d.signer_name || '',
+      signer:          d.signer_username || '',
+      filename:        d.filename || '',
+      file_size:       d.file_size_bytes || 0,
+      server_timestamp: d.timestamp_utc,
+      certificate:     JSON.stringify(d, null, 2),
+    });
+    setLoadStatus('ok', '✓ Certificate parsed from JSON');
+  } catch(e) {}
+};
+
+function showCertificate(d) {
+  certObj = d;
+  document.getElementById('v-id').textContent       = d.id;
+  document.getElementById('v-signer').textContent   = d.display_name || d.signer || 'Anonymous';
+  document.getElementById('v-time').textContent     = d.server_timestamp || d.created_at || '—';
+  document.getElementById('v-algo').textContent     = 'ML-DSA (NIST FIPS-204) + SHA-256';
+  document.getElementById('v-filename').textContent = d.filename
+    ? `${d.filename}${d.file_size ? ' · ' + formatSize(d.file_size) : ''}` : '(text message)';
+  document.getElementById('v-hash').textContent     = d.document_hash;
+  document.getElementById('cert-details').style.display = 'block';
+  document.getElementById('cert-details').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Verify file ────────────────────────────────────────────────────────────
+window.onVerifyFile = async function(file) {
+  if (!file) return;
+  const ab     = await file.arrayBuffer();
+  const digest = await crypto.subtle.digest('SHA-256', ab);
+  verifyHash   = Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2,'0')).join('');
+  document.getElementById('verify-hash').textContent      = verifyHash;
+  document.getElementById('verify-file-info').style.display = 'block';
+  document.getElementById('verify-btn').disabled         = false;
+  document.getElementById('verify-status').innerHTML     = '';
+  document.getElementById('verify-result').style.display = 'none';
+
+  // Quick hash match check
+  if (certObj && verifyHash === certObj.document_hash) {
+    setVerifyStatus('ok', '✓ Hash matches the certificate. Click Verify Signature to complete.');
+  } else if (certObj) {
+    setVerifyStatus('fail', '✗ Hash does NOT match the certificate. This is a different document or the file was modified.');
+    document.getElementById('verify-btn').disabled = true;
+  }
+};
+
+// Drag & drop
+const dropArea = document.getElementById('verify-drop');
+dropArea.addEventListener('dragover', e => { e.preventDefault(); dropArea.classList.add('drag-over'); });
+dropArea.addEventListener('dragleave', () => dropArea.classList.remove('drag-over'));
+dropArea.addEventListener('drop', e => {
+  e.preventDefault(); dropArea.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) window.onVerifyFile(file);
+});
+
+// ── Verify ML-DSA signature ────────────────────────────────────────────────
+window.verifySig = async function() {
+  if (!certObj || !verifyHash) return;
+
+  setVerifyStatus('info', '<span class="spinner"></span> Verifying ML-DSA signature…');
+  document.getElementById('verify-btn').disabled = true;
+
+  try {
+    const { ml_dsa } = await loadCrypto();
+
+    const pubKey    = fromB64(certObj.public_key_dsa);
+    const signature = fromB64(certObj.signature);
+    const hashBytes = new TextEncoder().encode(certObj.document_hash);
+
+    // Detect DSA variant from public key length
+    let scheme, variant;
+    if      (pubKey.length === 1312) { scheme = ml_dsa.ml_dsa44; variant = 'ML-DSA-44'; }
+    else if (pubKey.length === 1952) { scheme = ml_dsa.ml_dsa65; variant = 'ML-DSA-65'; }
+    else if (pubKey.length === 2592) { scheme = ml_dsa.ml_dsa87; variant = 'ML-DSA-87'; }
+    else throw new Error(`Unknown ML-DSA public key length: ${pubKey.length} bytes`);
+
+    const valid = scheme.verify(pubKey, hashBytes, signature);
+
+    const resultEl = document.getElementById('verify-result');
+    resultEl.style.display = 'block';
+
+    if (valid) {
+      resultEl.innerHTML = `
+        <div class="verify-result verify-ok">
+          <div class="verify-icon">✅</div>
+          <div class="verify-title">Signature Valid</div>
+          <p style="font-size:.82rem;color:var(--text-mid);max-width:480px;margin:0 auto;line-height:1.7">
+            The document matches the certificate. The ML-DSA signature is cryptographically valid —
+            this document was signed by the holder of the private key corresponding to the public key
+            in the certificate, at the recorded timestamp.
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-body">
+            <div class="cert-row"><span class="cert-label">Result</span><span class="cert-value" style="color:var(--green)">✓ VALID — ${variant}</span></div>
+            <div class="cert-row"><span class="cert-label">Signer</span><span class="cert-value">${certObj.display_name || 'Anonymous'}</span></div>
+            <div class="cert-row"><span class="cert-label">Timestamp</span><span class="cert-value">${certObj.server_timestamp}</span></div>
+            <div class="cert-row"><span class="cert-label">Certificate ID</span><span class="cert-value">${certObj.id}</span></div>
+            <div class="cert-row"><span class="cert-label">Algorithm</span><span class="cert-value">${variant} (NIST FIPS-204)</span></div>
+            <div class="cert-row"><span class="cert-label">Doc hash (SHA-256)</span><span class="cert-value mono">${verifyHash}</span></div>
+          </div>
+        </div>`;
+      setVerifyStatus('ok', '✓ Verification complete — signature is valid');
+    } else {
+      resultEl.innerHTML = `
+        <div class="verify-result verify-fail">
+          <div class="verify-icon">❌</div>
+          <div class="verify-title">Signature Invalid</div>
+          <p style="font-size:.82rem;color:var(--text-mid);max-width:480px;margin:0 auto;line-height:1.7">
+            The ML-DSA signature verification failed. This could mean the document was
+            modified after signing, the certificate was tampered with, or the wrong
+            certificate is being used for this document.
+          </p>
+        </div>`;
+      setVerifyStatus('fail', '✗ Signature verification failed');
+    }
+
+    resultEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+  } catch(e) {
+    setVerifyStatus('fail', '✗ Verification error: ' + e.message);
+  }
+  document.getElementById('verify-btn').disabled = false;
+};
+
+function formatSize(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+</script>
+</body>
+</html>

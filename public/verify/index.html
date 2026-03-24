@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PQCServer — Verify Notary Receipt</title>
+<meta name="description" content="Verify a PQCServer Notary Receipt. Check document authenticity, signature validity, and timestamp.">
+<link rel="stylesheet" href="/assets/style.css">
+<style>
+/* Verification result card */
+.vr-card {
+  border-radius: 10px; padding: 2rem; text-align: center; margin-bottom: 1.5rem;
+}
+.vr-valid {
+  background: rgba(0,229,160,.06); border: 2px solid rgba(0,229,160,.3);
+}
+.vr-invalid {
+  background: rgba(255,71,87,.06); border: 2px solid rgba(255,71,87,.3);
+}
+.vr-icon { font-size: 3rem; margin-bottom: .8rem; }
+.vr-title {
+  font-family: var(--sans); font-size: 1.4rem; font-weight: 800; margin-bottom: .4rem;
+}
+.vr-valid  .vr-title { color: var(--green); }
+.vr-invalid .vr-title { color: var(--red); }
+.vr-sub { font-size: .8rem; color: var(--text-mid); }
+
+/* Check rows */
+.check-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; border-bottom: 1px solid var(--border);
+  font-size: .78rem;
+}
+.check-row:last-child { border-bottom: none; }
+.check-icon { font-size: 1rem; flex-shrink: 0; width: 20px; text-align: center; }
+.check-label { color: var(--text-mid); flex: 1; }
+.check-value { color: var(--bright); font-size: .72rem; text-align: right; }
+
+/* Drop zone for file verification */
+.vdrop {
+  border: 2px dashed var(--border); border-radius: 8px;
+  padding: 2rem; text-align: center; cursor: pointer;
+  transition: all .2s; background: var(--bg); position: relative;
+}
+.vdrop:hover, .vdrop.drag-over {
+  border-color: rgba(0,229,160,.4); background: rgba(0,229,160,.03);
+}
+.vdrop input[type=file] {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+}
+
+.meta-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
+  background: var(--border); border-radius: 6px; overflow: hidden;
+}
+.meta-cell {
+  background: var(--surface); padding: 12px 14px;
+}
+.meta-label { font-size: .6rem; color: var(--text-dim); letter-spacing: .5px; text-transform: uppercase; margin-bottom: 3px; }
+.meta-val   { font-size: .8rem; color: var(--bright); word-break: break-all; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="/" class="topbar-logo"><div class="logo-pulse"></div>PQCServer</a>
+  <nav class="topbar-nav" id="topbar-nav">
+    <a href="/notary.html" class="hide-mobile" style="color:#a78bfa">Notary</a>
+    <a href="/sign.html" class="btn-nav" style="background:rgba(124,58,237,.15);border-color:rgba(124,58,237,.35);color:#a78bfa">Sign →</a>
+  </nav>
+</div>
+
+<div class="page">
+
+  <!-- LOADING -->
+  <div id="state-loading">
+    <div class="step-label">Notary · Verify</div>
+    <div class="page-title">Retrieving receipt…</div>
+    <div style="margin-top:1rem"><span class="spinner"></span>
+      <span style="font-size:.8rem;color:var(--text-mid);margin-left:8px">Loading from server…</span>
+    </div>
+  </div>
+
+  <!-- NOT FOUND -->
+  <div id="state-notfound" style="display:none">
+    <div class="step-label">Notary · Verify</div>
+    <div class="page-title">Receipt not found</div>
+    <div class="info-box warn" style="margin-top:1rem">
+      No receipt found for this ID. It may have been an invalid link or the receipt does not exist.
+    </div>
+    <div class="btn-row" style="margin-top:1rem">
+      <a href="/verify.html" class="btn btn-primary">✔️ Verify manually</a>
+      <a href="/" class="btn btn-ghost">← Home</a>
+    </div>
+  </div>
+
+  <!-- RECEIPT LOADED — verify document -->
+  <div id="state-receipt" style="display:none">
+    <div class="step-label">Notary · Verify</div>
+    <div class="page-title" id="receipt-title">Notary Receipt</div>
+    <p class="page-sub" id="receipt-sub"></p>
+
+    <!-- Receipt metadata -->
+    <div class="card">
+      <div class="card-head"><span class="accent" style="color:#a78bfa">Receipt Information</span></div>
+      <div class="card-body">
+        <div class="meta-grid" id="meta-grid"></div>
+      </div>
+    </div>
+
+    <!-- Document verification -->
+    <div class="card">
+      <div class="card-head"><span class="accent" style="color:#a78bfa">Verify Your Document</span></div>
+      <div class="card-body">
+        <div class="info-box" style="margin-bottom:1rem">
+          Drop the original document to verify it matches the receipt fingerprint and confirm all signatures are valid.
+          The document is hashed locally — <strong>never uploaded</strong>.
+        </div>
+
+        <div class="vdrop" id="vdrop">
+          <input type="file" id="verify-file" onchange="onVerifyFile(this.files[0])">
+          <div style="font-size:1.8rem;margin-bottom:.5rem">📄</div>
+          <div style="font-size:.8rem;color:var(--text-mid)">
+            Drop document here or click to select<br>
+            <span style="font-size:.68rem;color:var(--text-dim)">File is hashed locally, never uploaded</span>
+          </div>
+        </div>
+
+        <div id="verify-file-info" style="display:none;margin-top:1rem">
+          <div style="font-size:.75rem;color:var(--text-mid)" id="verify-file-name"></div>
+          <div class="hash-display" id="verify-hash" style="margin-top:6px;font-size:.62rem;
+            background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:8px 10px;
+            color:var(--text-dim);word-break:break-all;line-height:1.6;font-family:var(--mono)"></div>
+        </div>
+
+        <div class="btn-row" style="margin-top:1rem">
+          <button class="btn btn-success" id="verify-btn" onclick="runVerification()" disabled>
+            ✔️ Verify Document
+          </button>
+        </div>
+        <div id="verify-status"></div>
+      </div>
+    </div>
+
+    <!-- Verification result (shown after check) -->
+    <div id="result-section" style="display:none">
+
+      <div id="vr-card" class="vr-card">
+        <div class="vr-icon" id="vr-icon"></div>
+        <div class="vr-title" id="vr-title"></div>
+        <div class="vr-sub"  id="vr-sub"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="accent" style="color:#a78bfa">Verification Checks</span></div>
+        <div class="card-body" style="padding:0">
+          <div id="checks-list"></div>
+        </div>
+      </div>
+
+      <!-- Signature details -->
+      <div class="card">
+        <div class="card-head"><span class="accent" style="color:#a78bfa">Signature Details</span></div>
+        <div class="card-body">
+          <div class="form-group">
+            <label>Signer ML-DSA Public Key</label>
+            <div class="output-block" style="margin-top:4px">
+              <textarea id="signer-pubkey" readonly rows="2" style="font-size:.62rem;color:var(--accent)"></textarea>
+              <button class="copy-btn" onclick="copyField('signer-pubkey')">copy</button>
+            </div>
+          </div>
+          <div class="form-group" style="margin-top:.8rem">
+            <label>Full Receipt JSON</label>
+            <div style="background:var(--bg);border:1px solid var(--border);border-radius:5px;
+              padding:10px;font-size:.62rem;color:var(--text);white-space:pre-wrap;
+              word-break:break-all;max-height:200px;overflow-y:auto;font-family:var(--mono)"
+              id="full-receipt-json"></div>
+          </div>
+          <div class="btn-row" style="margin-top:.8rem">
+            <button class="btn btn-ghost" onclick="downloadReceipt()">💾 Download Receipt (.json)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  <strong style="color:var(--text)">PQCServer Notary</strong> — Public receipt verification ·
+  No account required · Zero-knowledge
+  <br><a href="/notary.html">About</a> · <a href="/sign.html">Sign</a> · <a href="/verify.html">Verify manually</a> · <a href="/">Home</a>
+</footer>
+
+<script src="/assets/auth.js"></script>
+<script type="module">
+import {
+  loadCrypto, hashFile,
+  verifyDocumentSignature, fromB64
+} from '/assets/crypto.js';
+
+let receiptData  = null;
+let verifyFile   = null;
+let verifyHashes = null;
+
+// Extract receipt ID from URL: /verify/NTR-xxxxxxxxxx
+const pathParts = window.location.pathname.split('/').filter(Boolean);
+const receiptId = pathParts[pathParts.length - 1];
+
+function show(id) {
+  ['state-loading','state-notfound','state-receipt']
+    .forEach(s => { document.getElementById(s).style.display = s===id?'block':'none'; });
+}
+
+function setStatus(id, type, msg) {
+  const e = document.getElementById(id);
+  if (e) e.innerHTML = `<div class="status status-${type}">${msg}</div>`;
+}
+
+function formatBytes(b) {
+  if (!b) return '—';
+  if (b < 1024)    return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+
+// Drag and drop for verification
+const vdrop = document.getElementById('vdrop');
+vdrop.addEventListener('dragover', e => { e.preventDefault(); vdrop.classList.add('drag-over'); });
+vdrop.addEventListener('dragleave', () => vdrop.classList.remove('drag-over'));
+vdrop.addEventListener('drop', e => {
+  e.preventDefault(); vdrop.classList.remove('drag-over');
+  const file = e.dataTransfer?.files[0];
+  if (file) onVerifyFile(file);
+});
+
+async function init() {
+  PQC.initTopbar();
+  loadCrypto();
+
+  if (!receiptId || receiptId === 'verify' || !receiptId.startsWith('NTR-')) {
+    show('state-notfound'); return;
+  }
+
+  document.title = `${receiptId} — PQCServer Notary`;
+
+  try {
+    const r = await fetch(`/api/notary_verify.php?id=${encodeURIComponent(receiptId)}`);
+    const d = await r.json();
+
+    if (!d.ok) { show('state-notfound'); return; }
+
+    receiptData = d.receipt;
+
+    // Fill receipt title
+    const fname = receiptData.document?.filename || 'document';
+    document.getElementById('receipt-title').textContent = `Receipt: ${fname}`;
+    document.getElementById('receipt-sub').textContent =
+      `Signed on ${receiptData.timestamp?.issued_at?.replace('T',' ').replace('Z',' UTC')} · ` +
+      `ID: ${receiptId}`;
+
+    // Fill metadata grid
+    const signer = receiptData.signer?.username
+      ? `@${receiptData.signer.username}`
+      : 'Anonymous (no account)';
+
+    document.getElementById('meta-grid').innerHTML = [
+      ['Receipt ID',    receiptId],
+      ['Document',      fname],
+      ['Size',          formatBytes(receiptData.document?.size_bytes)],
+      ['Signed by',     signer],
+      ['Algorithm',     receiptData.signature?.algorithm || 'ML-DSA'],
+      ['Signed at',     (receiptData.signature?.signed_at||'').replace('T',' ').replace('Z',' UTC')],
+      ['Server',        receiptData.timestamp?.server || 'pqcserver.com'],
+      ['Issued at',     (receiptData.timestamp?.issued_at||'').replace('T',' ').replace('Z',' UTC')],
+    ].map(([label, val]) => `
+      <div class="meta-cell">
+        <div class="meta-label">${label}</div>
+        <div class="meta-val">${val}</div>
+      </div>
+    `).join('');
+
+    show('state-receipt');
+
+  } catch(e) {
+    show('state-notfound');
+  }
+}
+
+window.onVerifyFile = async function(file) {
+  if (!file) return;
+  verifyFile   = file;
+  verifyHashes = null;
+  document.getElementById('verify-file-info').style.display = 'block';
+  document.getElementById('verify-file-name').textContent = `📄 ${file.name}`;
+  document.getElementById('verify-hash').innerHTML = '<span class="spinner"></span> Computing hashes…';
+  document.getElementById('verify-btn').disabled = true;
+
+  try {
+    const { sha256, sha512 } = await hashFile(file);
+    verifyHashes = { sha256, sha512 };
+    document.getElementById('verify-hash').innerHTML =
+      `<span style="color:var(--text-dim)">SHA-256:</span> ${sha256}<br>` +
+      `<span style="color:var(--text-dim)">SHA-512:</span> ${sha512}`;
+    document.getElementById('verify-btn').disabled = false;
+  } catch(e) {
+    document.getElementById('verify-hash').innerHTML = `<span style="color:var(--red)">✗ ${e.message}</span>`;
+  }
+};
+
+window.runVerification = async function() {
+  if (!verifyHashes || !receiptData) return;
+
+  setStatus('verify-status','info','<span class="spinner"></span> Verifying signatures…');
+  document.getElementById('verify-btn').disabled = true;
+
+  const checks = {
+    hash_match:       false,
+    user_signature:   false,
+    server_signature: false,
+  };
+  let allOk = false;
+
+  try {
+    await loadCrypto();
+
+    // 1. Check hashes
+    checks.hash_match = (
+      verifyHashes.sha256 === receiptData.document?.hash_sha256 &&
+      verifyHashes.sha512 === receiptData.document?.hash_sha512
+    );
+
+    // 2. Verify user signature
+    if (checks.hash_match) {
+      try {
+        checks.user_signature = await verifyDocumentSignature(
+          receiptData.signer?.public_key_dsa,
+          receiptData.signature?.signed_payload,
+          receiptData.signature?.value
+        );
+      } catch(e) { checks.user_signature = false; }
+    }
+
+    // 3. Verify server timestamp signature
+    try {
+      checks.server_signature = await verifyDocumentSignature(
+        receiptData.timestamp?.server_public_key,
+        receiptData.timestamp?.signed_payload,
+        receiptData.timestamp?.server_signature
+      );
+    } catch(e) { checks.server_signature = false; }
+
+    allOk = checks.hash_match && checks.user_signature && checks.server_signature;
+
+    // Show result card
+    const card = document.getElementById('vr-card');
+    card.className = 'vr-card ' + (allOk ? 'vr-valid' : 'vr-invalid');
+    document.getElementById('vr-icon').textContent  = allOk ? '✅' : '❌';
+    document.getElementById('vr-title').textContent = allOk
+      ? 'Document is AUTHENTIC'
+      : 'Verification FAILED';
+    document.getElementById('vr-sub').textContent   = allOk
+      ? 'The document matches the receipt. The signature and timestamp are valid.'
+      : 'One or more checks failed. The document may have been modified or the receipt is invalid.';
+
+    // Show checks
+    const checkDefs = [
+      { key: 'hash_match',       label: 'Document hash matches receipt (SHA-256 + SHA-512)',        pass: checks.hash_match },
+      { key: 'user_signature',   label: 'User ML-DSA signature is valid',                           pass: checks.user_signature },
+      { key: 'server_signature', label: 'Server timestamp countersignature is valid',               pass: checks.server_signature },
+    ];
+
+    document.getElementById('checks-list').innerHTML = checkDefs.map(c => `
+      <div class="check-row">
+        <div class="check-icon">${c.pass ? '✅' : '❌'}</div>
+        <div class="check-label">${c.label}</div>
+        <div class="check-value" style="color:${c.pass?'var(--green)':'var(--red)'}">${c.pass ? 'PASS' : 'FAIL'}</div>
+      </div>
+    `).join('');
+
+    // Fill signature details
+    document.getElementById('signer-pubkey').value   = receiptData.signer?.public_key_dsa || '';
+    document.getElementById('full-receipt-json').textContent = JSON.stringify(receiptData, null, 2);
+    document.getElementById('result-section').style.display = 'block';
+    document.getElementById('result-section').scrollIntoView({ behavior:'smooth', block:'start' });
+    setStatus('verify-status', allOk ? 'ok' : 'fail',
+      allOk ? '✓ All checks passed' : '✗ Verification failed — see details below');
+
+  } catch(e) {
+    setStatus('verify-status','fail','✗ Verification error: ' + e.message);
+  }
+  document.getElementById('verify-btn').disabled = false;
+};
+
+window.downloadReceipt = function() {
+  if (!receiptData) return;
+  const blob = new Blob([JSON.stringify(receiptData, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `pqcserver-notary-${receiptId}.json`;
+  a.click();
+};
+
+window.copyField = function(id) {
+  const el = document.getElementById(id); if (!el) return;
+  navigator.clipboard.writeText(el.value).then(() => {
+    const btn = el.closest('.output-block')?.querySelector('.copy-btn');
+    if (btn) { btn.textContent='copied!'; setTimeout(()=>btn.textContent='copy',1500); }
+  });
+};
+
+init();
+</script>
+</body>
+</html>

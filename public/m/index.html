@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PQCServer — Decrypt Message</title>
+<link rel="stylesheet" href="/assets/style.css">
+<style>
+.progress-wrap {
+  background:var(--bg); border:1px solid var(--border);
+  border-radius:5px; overflow:hidden; height:6px; margin-top:8px; display:none;
+}
+.progress-bar {
+  height:100%;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));
+  width:0%; transition:width .3s ease;
+}
+.progress-label { font-size:.65rem; color:var(--text-dim); margin-top:4px; display:none; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="/" class="topbar-logo"><div class="logo-pulse"></div>PQCServer</a>
+  <nav class="topbar-nav" id="topbar-nav"></nav>
+</div>
+
+<div class="page">
+
+  <!-- LOADING -->
+  <div id="state-loading">
+    <div class="step-label">Secure Message</div>
+    <div class="page-title">Loading…</div>
+    <div style="margin-top:1rem">
+      <span class="spinner"></span>
+      <span style="font-size:.8rem;color:var(--text-mid);margin-left:8px">
+        Retrieving encrypted data…
+      </span>
+    </div>
+  </div>
+
+  <!-- NOT FOUND -->
+  <div id="state-notfound" style="display:none">
+    <div class="step-label">Message not found</div>
+    <div class="page-title">This message no longer exists</div>
+    <div class="info-box warn" style="margin-top:1rem">
+      <strong>Possible reasons:</strong><br>
+      · The message has already been read (burn-after-read was enabled)<br>
+      · The message has expired<br>
+      · The link is incorrect or incomplete
+    </div>
+    <div class="btn-row" style="margin-top:1rem">
+      <a href="/encrypt.html" class="btn btn-primary">🔒 Send a new encrypted message</a>
+      <a href="/" class="btn btn-ghost">← Back to home</a>
+    </div>
+  </div>
+
+  <!-- DECRYPT INPUT -->
+  <div id="state-decrypt" style="display:none">
+    <div class="step-label">Encrypted message</div>
+    <div class="page-title">You have a secure message</div>
+    <p class="page-sub">
+      This message was encrypted with ML-KEM post-quantum cryptography.
+      Enter your private key to decrypt it — everything happens in this browser.
+    </p>
+
+    <div id="msg-meta" class="info-box" style="margin-bottom:1.2rem"></div>
+
+    <div class="card">
+      <div class="card-head"><span class="accent">Your ML-KEM Private Key</span></div>
+      <div class="card-body">
+        <div class="info-box warn">
+          <strong>⚠ Your private key never leaves this browser.</strong>
+          It is used locally for decryption and is never sent to our server.
+        </div>
+        <div class="form-group" style="margin-top:.8rem">
+          <label>Paste your ML-KEM private key (base64)</label>
+          <textarea id="private-key" placeholder="Paste your ML-KEM private key here…"
+                    rows="4" style="font-size:.68rem"></textarea>
+        </div>
+        <div class="info-box" style="font-size:.68rem;margin-top:.5rem">
+          Don't have a key? <a href="/keygen.html" style="color:var(--accent)">Generate your keypair →</a><br>
+          Can't find it? Check the .txt file you downloaded when you registered.
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="decryptMessage()" id="dec-btn">
+            🔓 Decrypt Message
+          </button>
+        </div>
+        <div id="dec-status"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div id="state-result" style="display:none">
+    <div class="step-label">Decrypted</div>
+    <div class="page-title" style="color:var(--green)">✓ Message decrypted</div>
+    <p class="page-sub" id="burn-notice"></p>
+
+    <!-- Text -->
+    <div class="card" style="border-color:rgba(0,229,160,.25)">
+      <div class="card-head" style="color:var(--green)">Message</div>
+      <div class="card-body">
+        <div id="msg-text" style="
+          background:var(--bg);border:1px solid var(--border);border-radius:5px;
+          padding:14px;font-size:.82rem;color:var(--text);line-height:1.7;
+          white-space:pre-wrap;word-break:break-word;min-height:60px;
+          max-height:400px;overflow-y:auto"></div>
+      </div>
+    </div>
+
+    <!-- File download -->
+    <div id="file-result" style="display:none">
+      <div class="card" style="border-color:rgba(0,212,255,.2);margin-top:1rem">
+        <div class="card-head"><span class="accent">File attachment</span></div>
+        <div class="card-body">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <span style="font-size:1.5rem">📎</span>
+            <div>
+              <div id="file-name" style="color:var(--bright);font-size:.85rem"></div>
+              <div id="file-info" style="color:var(--text-dim);font-size:.7rem"></div>
+            </div>
+            <button class="btn btn-success" onclick="downloadFile()" id="dl-btn"
+                    style="margin-left:auto">
+              💾 Download &amp; Decrypt File
+            </button>
+          </div>
+          <div class="progress-wrap" id="file-progress-wrap" style="margin-top:.8rem">
+            <div class="progress-bar" id="file-progress-bar"></div>
+          </div>
+          <div class="progress-label" id="file-progress-label"></div>
+          <div id="file-dl-status" style="margin-top:.5rem"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row" style="margin-top:1rem">
+      <a href="/encrypt.html" class="btn btn-primary">🔒 Send a reply</a>
+      <a href="/" class="btn btn-ghost">← Home</a>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <strong style="color:var(--text)">PQCServer</strong> —
+  Decryption happens locally. Your private key is never transmitted.
+  <br><a href="/">Home</a> · <a href="/keygen.html">Get Keys</a> · <a href="/encrypt.html">Encrypt</a>
+</footer>
+
+<script src="/assets/auth.js"></script>
+<script type="module">
+import { loadCrypto, decryptEnvelope, downloadAndDecryptFile } from '/assets/crypto.js';
+
+const msgId = window.location.pathname.split('/').filter(Boolean).pop();
+let msgData    = null;
+let sharedSec  = null;
+
+PQC.initTopbar();
+loadCrypto();
+
+function show(id) {
+  ['state-loading','state-notfound','state-decrypt','state-result']
+    .forEach(s => { document.getElementById(s).style.display = s === id ? 'block' : 'none'; });
+}
+
+function setStatus(id, type, msg) {
+  const e = document.getElementById(id);
+  if (e) e.innerHTML = `<div class="status status-${type}">${msg}</div>`;
+}
+
+function setProgress(pct, label) {
+  const wrap = document.getElementById('file-progress-wrap');
+  const bar  = document.getElementById('file-progress-bar');
+  const lbl  = document.getElementById('file-progress-label');
+  if (wrap) wrap.style.display  = pct > 0 ? 'block' : 'none';
+  if (bar)  bar.style.width     = pct + '%';
+  if (lbl)  { lbl.style.display = label ? 'block' : 'none'; lbl.textContent = label || ''; }
+}
+
+// ── Load message from server ──
+async function init() {
+  if (!msgId || msgId === 'm') { show('state-notfound'); return; }
+  try {
+    const r = await fetch(`/api/fetch.php?id=${encodeURIComponent(msgId)}`);
+    const d = await r.json();
+    if (!d.ok) { show('state-notfound'); return; }
+
+    msgData = d;
+
+    // Show metadata
+    document.getElementById('msg-meta').innerHTML =
+      `<strong>Encrypted message</strong>` +
+      (d.created ? ` · Received ${d.created} UTC` : '') +
+      (d.burn ? ' &nbsp;·&nbsp; <span style="color:var(--warn)">🔥 Burn after read</span>' : '') +
+      (d.expires ? ` &nbsp;·&nbsp; Expires ${d.expires}` : '') +
+      (d.has_file ? ' &nbsp;·&nbsp; <span style="color:var(--accent)">📎 Has file attachment</span>' : '');
+
+    show('state-decrypt');
+  } catch(e) {
+    show('state-notfound');
+  }
+}
+
+// ── Decrypt text ──
+window.decryptMessage = async function() {
+  const secKeyB64 = document.getElementById('private-key').value.trim();
+  if (!secKeyB64) { setStatus('dec-status','fail','✗ Paste your ML-KEM private key'); return; }
+
+  const decBtn = document.getElementById('dec-btn');
+  decBtn.disabled = true;
+  setStatus('dec-status','info','<span class="spinner"></span> Loading crypto…');
+
+  try {
+    await loadCrypto();
+    setStatus('dec-status','info','<span class="spinner"></span> Decrypting…');
+
+    const { text, sharedSecret } = await decryptEnvelope(secKeyB64, msgData.ciphertext);
+    sharedSec = sharedSecret;
+
+    document.getElementById('msg-text').textContent = text || '(no text content)';
+
+    // Show file section if attachment present
+    if (msgData.has_file && msgData.file_url) {
+      document.getElementById('file-result').style.display = 'block';
+      // File name/type will be shown after download (it's encrypted)
+      document.getElementById('file-name').textContent = 'Encrypted attachment';
+      document.getElementById('file-info').textContent = 'Click Download to decrypt and save the file';
+    }
+
+    document.getElementById('burn-notice').innerHTML = msgData.burn
+      ? '🔥 This message has been <strong style="color:var(--warn)">permanently deleted</strong> from our server.'
+      : 'Decryption complete. The message remains on the server until it expires.';
+
+    show('state-result');
+  } catch(e) {
+    setStatus('dec-status','fail','✗ ' + e.message);
+    decBtn.disabled = false;
+  }
+};
+
+// ── Download + decrypt file ──
+window.downloadFile = async function() {
+  if (!msgData?.file_url || !sharedSec) return;
+
+  const btn = document.getElementById('dl-btn');
+  btn.disabled = true;
+  setProgress(1, 'Preparing download…');
+
+  try {
+    const { name, type, blob } = await downloadAndDecryptFile(
+      msgData.file_url,
+      sharedSec,
+      (stage, pct) => {
+        const labels = {
+          downloading: 'Downloading encrypted file…',
+          decrypting:  'Decrypting file…',
+          done:        '✓ File decrypted!',
+        };
+        setProgress(pct, labels[stage] || '');
+      }
+    );
+
+    // Update UI with real file info
+    document.getElementById('file-name').textContent = name;
+    document.getElementById('file-info').textContent =
+      `${(blob.size/1024).toFixed(1)} KB · ${type}`;
+
+    // Trigger download
+    const url = URL.createObjectURL(blob);
+    const a   = document.createElement('a');
+    a.href     = url;
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    setStatus('file-dl-status','ok','✓ File downloaded and decrypted successfully');
+    setProgress(100, '✓ Done');
+    btn.textContent = '✓ Downloaded';
+
+  } catch(e) {
+    setStatus('file-dl-status','fail','✗ ' + e.message);
+    setProgress(0, '');
+    btn.disabled = false;
+  }
+};
+
+init();
+</script>
+</body>
+</html>

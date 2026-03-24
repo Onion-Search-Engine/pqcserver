@@ -1,0 +1,33 @@
+# Dependencies
+/vendor/
+/node_modules/
+
+# Environment & secrets
+.env
+.env.*
+config/server_keys_production.php
+
+# Generated server keys (NEVER commit these)
+server_dsa_secret.txt
+server_dsa_public.txt
+*.key
+*.pem
+
+# Logs
+*.log
+/logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# PHP cache
+*.cache
+/tmp/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

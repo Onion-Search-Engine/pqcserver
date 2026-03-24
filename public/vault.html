@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PQCServer — My Vault</title>
+<link rel="stylesheet" href="/assets/style.css">
+<style>
+.vault-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+.stat-box {
+  background: var(--surface);
+  padding: 1.2rem 1.5rem;
+  text-align: center;
+}
+.stat-val {
+  font-family: var(--sans);
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--bright);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.stat-lbl {
+  font-size: .65rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* Search bar */
+.search-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 1.2rem;
+  flex-wrap: wrap;
+}
+.search-bar input {
+  flex: 1;
+  min-width: 200px;
+}
+.search-bar select {
+  width: auto;
+  min-width: 140px;
+}
+
+/* File grid */
+.file-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+.file-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: border-color .2s, transform .15s;
+}
+.file-card:hover {
+  border-color: rgba(0,212,255,.25);
+  transform: translateY(-1px);
+}
+.file-card-head {
+  background: var(--surface2);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.file-emoji { font-size: 1.6rem; flex-shrink: 0; }
+.file-title {
+  flex: 1;
+  min-width: 0;
+}
+.file-name-text {
+  font-size: .82rem;
+  color: var(--bright);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+.file-size-text {
+  font-size: .65rem;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+.file-card-body { padding: 12px 14px; }
+.file-meta-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: .68rem;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+.file-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.file-tag {
+  font-size: .58rem;
+  background: rgba(124,58,237,.1);
+  border: 1px solid rgba(124,58,237,.25);
+  color: #a78bfa;
+  padding: 1px 7px;
+  border-radius: 2px;
+  letter-spacing: .3px;
+}
+.file-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.file-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: .65rem;
+  cursor: pointer;
+  transition: all .2s;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.file-btn:hover { border-color: rgba(0,212,255,.3); color: var(--accent); }
+.file-btn.danger:hover { border-color: rgba(255,71,87,.3); color: var(--red); }
+.file-btn.success { border-color: rgba(0,229,160,.3); color: var(--green); }
+
+/* Empty state */
+.empty-vault {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--text-dim);
+}
+.empty-vault .empty-icon { font-size: 3rem; margin-bottom: 1rem; }
+.empty-vault p { font-size: .82rem; line-height: 1.7; max-width: 320px; margin: 0 auto .5rem; }
+
+/* Pagination */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 2rem;
+}
+.page-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: .72rem;
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all .2s;
+}
+.page-btn:hover { border-color: rgba(0,212,255,.3); color: var(--accent); }
+.page-btn:disabled { opacity: .3; cursor: not-allowed; }
+.page-info { font-size: .7rem; color: var(--text-dim); }
+
+/* Modal overlay */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.65); backdrop-filter: blur(4px);
+  z-index: 9999; display: flex; align-items: center; justify-content: center;
+  padding: 1rem; animation: fadeIn .2s ease;
+}
+.modal-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 1.5rem;
+  width: 100%; max-width: 400px;
+  animation: slideUp .25s ease;
+}
+@keyframes fadeIn  { from{opacity:0} to{opacity:1} }
+@keyframes slideUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+.modal-title { font-family: var(--sans); font-weight: 700; color: var(--bright); font-size: 1.1rem; margin-bottom: .5rem; }
+.modal-body  { font-size: .8rem; color: var(--text-mid); line-height: 1.6; margin-bottom: 1.2rem; }
+
+@media(max-width:640px) {
+  .vault-stats { grid-template-columns: 1fr 1fr; }
+  .file-grid   { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="/" class="topbar-logo"><div class="logo-pulse"></div>PQCServer</a>
+  <nav class="topbar-nav" id="topbar-nav"></nav>
+</div>
+
+<div class="page-wide">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem">
+    <div>
+      <div class="step-label">Vault</div>
+      <div class="page-title">My Encrypted Vault</div>
+      <p class="page-sub">Your post-quantum encrypted file storage. Files are permanent until you delete them.</p>
+    </div>
+    <a href="/vault_upload.html" class="btn btn-primary" style="align-self:flex-end">
+      🔒 Upload new file
+    </a>
+  </div>
+
+  <!-- Stats -->
+  <div class="vault-stats" id="vault-stats">
+    <div class="stat-box"><div class="stat-val" id="stat-files">—</div><div class="stat-lbl">Files</div></div>
+    <div class="stat-box"><div class="stat-val" id="stat-size">—</div><div class="stat-lbl">Total Size</div></div>
+    <div class="stat-box"><div class="stat-val" id="stat-shared">—</div><div class="stat-lbl">Shared</div></div>
+  </div>
+
+  <!-- Search & filter -->
+  <div class="search-bar">
+    <input type="text" id="search-input" placeholder="Search by filename…"
+           oninput="debounceSearch()" autocomplete="off">
+    <select id="sort-select" onchange="loadVault()">
+      <option value="created_at">Newest first</option>
+      <option value="filename">Name A–Z</option>
+      <option value="size_bytes">Largest first</option>
+    </select>
+    <button class="btn btn-ghost" onclick="loadVault()">🔄 Refresh</button>
+  </div>
+
+  <!-- File list -->
+  <div id="vault-loading" style="text-align:center;padding:3rem;color:var(--text-dim)">
+    <span class="spinner"></span> <span style="margin-left:8px;font-size:.8rem">Loading your vault…</span>
+  </div>
+
+  <div id="vault-grid" class="file-grid" style="display:none"></div>
+
+  <div id="vault-empty" class="empty-vault" style="display:none">
+    <div class="empty-icon">🔐</div>
+    <p>Your vault is empty.</p>
+    <p style="color:var(--text-dim);font-size:.75rem">Upload encrypted files to store them permanently.</p>
+    <a href="/vault_upload.html" class="btn btn-primary" style="margin-top:1rem;display:inline-flex">
+      🔒 Upload your first file
+    </a>
+  </div>
+
+  <!-- Pagination -->
+  <div id="pagination" class="pagination" style="display:none">
+    <button class="page-btn" id="prev-btn" onclick="changePage(-1)">← Previous</button>
+    <span class="page-info" id="page-info"></span>
+    <button class="page-btn" id="next-btn" onclick="changePage(1)">Next →</button>
+  </div>
+</div>
+
+<footer>
+  <strong style="color:var(--text)">PQCServer Vault</strong> — Encrypted file storage · Zero-knowledge · All files encrypted with ML-KEM
+  <br><a href="/vault_upload.html">Upload</a> · <a href="/dashboard.html">Dashboard</a> · <a href="/">Home</a>
+</footer>
+
+<script src="/assets/auth.js"></script>
+<script>
+let currentPage = 1;
+let totalPages  = 1;
+let totalShared = 0;
+let searchTimer = null;
+
+async function init() {
+  const session = await PQC.requireAuth();
+  if (!session) return;
+  loadVault();
+}
+
+function debounceSearch() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(()=>{ currentPage=1; loadVault(); }, 400);
+}
+
+function changePage(dir) {
+  currentPage = Math.max(1, Math.min(totalPages, currentPage + dir));
+  loadVault();
+}
+
+async function loadVault() {
+  const search = document.getElementById('search-input').value.trim();
+  const sort   = document.getElementById('sort-select').value;
+  const order  = sort === 'filename' ? 'asc' : 'desc';
+
+  document.getElementById('vault-loading').style.display = 'block';
+  document.getElementById('vault-grid').style.display    = 'none';
+  document.getElementById('vault-empty').style.display   = 'none';
+  document.getElementById('pagination').style.display    = 'none';
+
+  try {
+    const params = new URLSearchParams({
+      page: currentPage, limit: 20, sort, order,
+      ...(search ? { search } : {}),
+    });
+
+    const r = await fetch('/api/vault_list.php?' + params);
+    const d = await r.json();
+
+    if (!d.ok) throw new Error(d.error || 'Failed to load vault');
+
+    // Update stats
+    document.getElementById('stat-files').textContent = d.stats.total_files;
+    document.getElementById('stat-size').textContent  = formatSize(d.stats.total_bytes);
+
+    // Count shared files
+    totalShared = d.files.filter(f => f.shared_with && f.shared_with.length > 0).length;
+    document.getElementById('stat-shared').textContent = totalShared;
+
+    document.getElementById('vault-loading').style.display = 'none';
+
+    if (d.files.length === 0) {
+      document.getElementById('vault-empty').style.display = 'block';
+      return;
+    }
+
+    // Render files
+    totalPages = d.pagination.total_pages;
+    renderFiles(d.files);
+
+    // Pagination
+    if (totalPages > 1) {
+      document.getElementById('pagination').style.display = 'flex';
+      document.getElementById('page-info').textContent =
+        `Page ${currentPage} of ${totalPages} — ${d.pagination.total} files`;
+      document.getElementById('prev-btn').disabled = currentPage <= 1;
+      document.getElementById('next-btn').disabled = currentPage >= totalPages;
+    }
+
+  } catch(e) {
+    document.getElementById('vault-loading').innerHTML =
+      `<div class="status status-fail">✗ ${e.message}</div>`;
+  }
+}
+
+function renderFiles(files) {
+  const grid = document.getElementById('vault-grid');
+  grid.innerHTML = files.map(f => `
+    <div class="file-card" id="card-${f.vault_id}">
+      <div class="file-card-head">
+        <div class="file-emoji">${getFileIcon(f.mime_type)}</div>
+        <div class="file-title">
+          <div class="file-name-text" title="${escHtml(f.filename)}">${escHtml(f.filename)}</div>
+          <div class="file-size-text">${formatSize(f.size_bytes)} · ${f.created_at || ''}</div>
+        </div>
+      </div>
+      <div class="file-card-body">
+        ${f.note ? `<div style="font-size:.72rem;color:var(--text-dim);margin-bottom:8px;font-style:italic">${escHtml(f.note)}</div>` : ''}
+        <div class="file-meta-row">
+          <span>Accessed: ${f.last_accessed || 'Never'}</span>
+          <span>${f.access_count} download${f.access_count !== 1 ? 's' : ''}</span>
+        </div>
+        ${f.shared_with && f.shared_with.length > 0
+          ? `<div class="file-meta-row"><span style="color:var(--green)">✓ Shared with: ${f.shared_with.join(', ')}</span></div>`
+          : ''}
+        ${f.tags && f.tags.length > 0
+          ? `<div class="file-tags">${f.tags.map(t=>`<span class="file-tag">${escHtml(t)}</span>`).join('')}</div>`
+          : ''}
+        <div class="file-actions">
+          <button class="file-btn success" onclick="copyLink('${escHtml(f.shortlink || '')}')">🔗 Copy link</button>
+          <button class="file-btn" onclick="newLink('${f.vault_id}')">↺ New link</button>
+          <button class="file-btn" onclick="shareWith('${f.vault_id}')">👤 Share</button>
+          <button class="file-btn danger" onclick="confirmDelete('${f.vault_id}', '${escHtml(f.filename)}')">🗑 Delete</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+  grid.style.display = 'grid';
+}
+
+// ── Actions ──────────────────────────────────────────────────────────────────
+
+window.copyLink = function(url) {
+  if (!url) return;
+  navigator.clipboard.writeText(url).then(() => toast('Link copied!', 'ok'));
+};
+
+window.newLink = async function(vaultId) {
+  try {
+    const r = await fetch('/api/vault_share.php', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ vault_id: vaultId, action: 'new_link' }),
+    });
+    const d = await r.json();
+    if (d.ok) {
+      navigator.clipboard.writeText(d.shortlink).then(() =>
+        toast('New link generated and copied!', 'ok')
+      );
+    } else {
+      toast('✗ ' + d.error, 'fail');
+    }
+  } catch(e) { toast('✗ Network error', 'fail'); }
+};
+
+window.shareWith = function(vaultId) {
+  showModal(
+    '👤 Share with user',
+    'Enter the PQCServer username to share this file with:',
+    '<input type="text" id="share-username" placeholder="username" class="pqcs-input" style="width:100%;margin-bottom:.8rem">',
+    'Share',
+    async () => {
+      const username = document.getElementById('share-username')?.value.trim();
+      if (!username) return toast('Enter a username', 'warn');
+      closeModal();
+      try {
+        const r = await fetch('/api/vault_share.php', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ vault_id: vaultId, action: 'share_with', username }),
+        });
+        const d = await r.json();
+        if (d.ok) { toast(`✓ Shared with ${d.display_name || username}`, 'ok'); loadVault(); }
+        else toast('✗ ' + d.error, 'fail');
+      } catch(e) { toast('✗ Network error', 'fail'); }
+    }
+  );
+};
+
+window.confirmDelete = function(vaultId, filename) {
+  showModal(
+    '🗑 Delete file',
+    `Are you sure you want to permanently delete <strong style="color:var(--bright)">${escHtml(filename)}</strong>?<br><br>
+     <span style="color:var(--red)">This action cannot be undone. The file and all its shortlinks will be removed.</span>`,
+    '',
+    'Delete permanently',
+    async () => {
+      closeModal();
+      try {
+        const r = await fetch('/api/vault_delete.php', {
+          method: 'DELETE',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ vault_id: vaultId }),
+        });
+        const d = await r.json();
+        if (d.ok) {
+          document.getElementById('card-' + vaultId)?.remove();
+          toast('✓ File deleted', 'ok');
+          loadVault();
+        } else {
+          toast('✗ ' + d.error, 'fail');
+        }
+      } catch(e) { toast('✗ Network error', 'fail'); }
+    },
+    true // danger style
+  );
+};
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function showModal(title, body, extra, confirmLabel, onConfirm, isDanger = false) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-box">
+      <div class="modal-title">${title}</div>
+      <div class="modal-body">${body}</div>
+      ${extra}
+      <div class="btn-row" style="margin-top:0">
+        <button class="btn ${isDanger ? 'btn-danger' : 'btn-primary'}" id="modal-confirm">${confirmLabel}</button>
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  document.getElementById('modal-confirm').onclick = onConfirm;
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay')?.remove();
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg, type = 'info') {
+  const colors = {
+    ok:   'background:rgba(0,229,160,.12);border:1px solid rgba(0,229,160,.3);color:#00e5a0;',
+    fail: 'background:rgba(255,71,87,.1);border:1px solid rgba(255,71,87,.3);color:#ff4757;',
+    info: 'background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2);color:#00d4ff;',
+    warn: 'background:rgba(255,165,2,.08);border:1px solid rgba(255,165,2,.2);color:#ffa502;',
+  };
+  const el = document.createElement('div');
+  el.style.cssText = `position:fixed;bottom:24px;right:24px;z-index:99999;
+    padding:10px 18px;border-radius:5px;font-family:'DM Mono',monospace;font-size:.75rem;
+    animation:pqcToastIn .3s ease;max-width:340px;line-height:1.5;${colors[type]||colors.info}`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function formatSize(b) {
+  if (!b) return '0 B';
+  if (b < 1024)       return b + ' B';
+  if (b < 1048576)    return (b/1024).toFixed(1) + ' KB';
+  if (b < 1073741824) return (b/1048576).toFixed(1) + ' MB';
+  return (b/1073741824).toFixed(2) + ' GB';
+}
+
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function getFileIcon(mime) {
+  if (!mime) return '📁';
+  if (mime.startsWith('image/'))  return '🖼️';
+  if (mime.startsWith('video/'))  return '🎬';
+  if (mime.startsWith('audio/'))  return '🎵';
+  if (mime.includes('pdf'))       return '📄';
+  if (mime.includes('zip')||mime.includes('tar')) return '🗜️';
+  if (mime.includes('word')||mime.includes('document')) return '📝';
+  if (mime.includes('sheet')||mime.includes('excel'))   return '📊';
+  if (mime.startsWith('text/'))   return '📃';
+  return '📁';
+}
+
+// Toast animation
+const _s = document.createElement('style');
+_s.textContent = `@keyframes pqcToastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}`;
+document.head.appendChild(_s);
+
+init();
+</script>
+</body>
+</html>

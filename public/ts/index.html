@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PQCServer — Timestamp Certificate</title>
+<meta name="description" content="Cryptographic timestamp certificate — ML-DSA post-quantum signature proof of document existence.">
+<link rel="stylesheet" href="/assets/style.css">
+<style>
+/* Certificate card */
+.cert-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 1.2rem;
+}
+
+.cert-header {
+  background: linear-gradient(135deg, rgba(0,212,255,.06), rgba(124,58,237,.06));
+  border-bottom: 1px solid var(--border);
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.cert-badge {
+  width: 48px; height: 48px;
+  border-radius: 8px;
+  background: rgba(0,229,160,.1);
+  border: 1px solid rgba(0,229,160,.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.cert-badge.invalid {
+  background: rgba(255,71,87,.1);
+  border-color: rgba(255,71,87,.3);
+}
+
+.cert-title {
+  font-family: var(--sans);
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: var(--bright);
+  margin-bottom: 3px;
+}
+
+.cert-sub {
+  font-size: .7rem;
+  color: var(--text-dim);
+  letter-spacing: .5px;
+}
+
+/* Field rows */
+.cert-fields {
+  padding: 1.2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.cert-field {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 1rem;
+  padding: .8rem 0;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+  align-items: start;
+}
+
+.cert-field:last-child { border-bottom: none; }
+
+.field-label {
+  font-size: .62rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding-top: 2px;
+}
+
+.field-value {
+  font-size: .78rem;
+  color: var(--text);
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.field-value.mono {
+  font-family: var(--mono);
+  font-size: .68rem;
+  color: var(--accent);
+}
+
+.field-value.green { color: var(--green); }
+.field-value.bright { color: var(--bright); font-weight: 600; }
+
+/* Verify result */
+.verify-result {
+  padding: 1.2rem 1.5rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: .78rem;
+}
+
+.verify-result.ok   { background: rgba(0,229,160,.05); color: var(--green); }
+.verify-result.fail { background: rgba(255,71,87,.05);  color: var(--red); }
+.verify-result.pending { background: rgba(0,212,255,.04); color: var(--accent); }
+
+/* JSON viewer */
+.json-viewer {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1rem;
+  font-family: var(--mono);
+  font-size: .65rem;
+  color: var(--text-dim);
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* Action bar */
+.action-bar {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.2rem;
+}
+
+.action-bar p {
+  font-size: .72rem;
+  color: var(--text-dim);
+  flex: 1;
+  min-width: 200px;
+}
+
+@media(max-width:600px) {
+  .cert-field { grid-template-columns: 1fr; gap: .3rem; }
+  .field-label { padding-top: 0; }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="/" class="topbar-logo"><div class="logo-pulse"></div>PQCServer</a>
+  <nav class="topbar-nav" id="topbar-nav">
+    <a href="/timestamp.html" class="hide-mobile">Sign Document</a>
+    <a href="/verify.html" class="hide-mobile">Verify</a>
+    <a href="/timestamp.html" class="btn-nav">Sign Now →</a>
+  </nav>
+</div>
+
+<div class="page">
+
+  <!-- LOADING -->
+  <div id="state-loading">
+    <div style="text-align:center;padding:3rem 0">
+      <span class="spinner"></span>
+      <span style="font-size:.8rem;color:var(--text-mid);margin-left:8px">Loading certificate…</span>
+    </div>
+  </div>
+
+  <!-- NOT FOUND -->
+  <div id="state-notfound" style="display:none">
+    <div class="step-label">Certificate</div>
+    <div class="page-title">Certificate not found</div>
+    <div class="info-box warn" style="margin-top:1rem">
+      This certificate ID does not exist or has been removed.
+    </div>
+    <div class="btn-row" style="margin-top:1rem">
+      <a href="/timestamp.html" class="btn btn-primary">✏️ Sign a document</a>
+      <a href="/" class="btn btn-ghost">← Home</a>
+    </div>
+  </div>
+
+  <!-- CERTIFICATE -->
+  <div id="state-cert" style="display:none">
+    <div class="step-label">Cryptographic Timestamp Certificate</div>
+    <div class="page-title" id="cert-title">Timestamp Certificate</div>
+    <p class="page-sub">
+      This certificate proves that the document with the recorded SHA-256 hash
+      was signed with the recorded ML-DSA key at the recorded timestamp.
+      Verification is cryptographic and does not require trusting PQCServer.
+    </p>
+
+    <!-- Verify document section -->
+    <div class="action-bar">
+      <p>🔍 Verify this certificate against your document:</p>
+      <input type="file" id="verify-file"
+        style="background:var(--bg);border:1px solid var(--border);border-radius:5px;
+               color:var(--text);font-family:var(--mono);font-size:.75rem;padding:7px 10px;cursor:pointer">
+      <button class="btn btn-success" onclick="verifyDocument()">✔️ Verify Document</button>
+    </div>
+    <div id="verify-file-status"></div>
+
+    <!-- Main certificate card -->
+    <div class="cert-card">
+      <div class="cert-header">
+        <div class="cert-badge" id="cert-badge">✓</div>
+        <div>
+          <div class="cert-title" id="cert-filename">Document</div>
+          <div class="cert-sub" id="cert-id-display">Certificate ID</div>
+        </div>
+      </div>
+
+      <div class="cert-fields">
+        <div class="cert-field">
+          <div class="field-label">Certificate ID</div>
+          <div class="field-value mono" id="f-id">—</div>
+        </div>
+        <div class="cert-field">
+          <div class="field-label">Timestamp (UTC)</div>
+          <div class="field-value bright" id="f-timestamp">—</div>
+        </div>
+        <div class="cert-field">
+          <div class="field-label">Document Hash</div>
+          <div class="field-value mono" id="f-hash">—</div>
+        </div>
+        <div class="cert-field">
+          <div class="field-label">Filename</div>
+          <div class="field-value" id="f-filename">—</div>
+        </div>
+        <div class="cert-field">
+          <div class="field-label">File size</div>
+          <div class="field-value" id="f-filesize">—</div>
+        </div>
+        <div class="cert-field">
+          <div class="field-label">Signed by</div>
+          <div class="field-value" id="f-signer">—</div>
+        </div>
+        <div class="cert-field">
+          <div class="field-label">Signer Public Key</div>
+          <div class="field-value mono" id="f-pubkey">—</div>
+        </div>
+        <div class="cert-field">
+          <div class="field-label">User Signature</div>
+          <div class="field-value mono" id="f-sig">—</div>
+        </div>
+        <div class="cert-field">
+          <div class="field-label">Server Co-signature</div>
+          <div class="field-value mono" id="f-serversig">—</div>
+        </div>
+        <div class="cert-field">
+          <div class="field-label">Algorithm</div>
+          <div class="field-value green" id="f-alg">ML-DSA-65 (NIST FIPS-204)</div>
+        </div>
+        <div class="cert-field">
+          <div class="field-label">Notes</div>
+          <div class="field-value" id="f-notes" style="display:none">—</div>
+        </div>
+      </div>
+
+      <div id="sig-verify-result" class="verify-result pending">
+        <span class="spinner"></span>
+        <span>Verifying ML-DSA signature…</span>
+      </div>
+    </div>
+
+    <!-- Signature verification status -->
+    <div id="doc-verify-result" style="display:none">
+      <div class="card" style="margin-bottom:1.2rem">
+        <div class="card-head"><span class="accent">Document Verification</span></div>
+        <div class="card-body" id="doc-verify-body"></div>
+      </div>
+    </div>
+
+    <!-- Raw certificate JSON -->
+    <div class="card">
+      <div class="card-head">
+        <span class="accent">Raw Certificate (JSON)</span>
+        <button class="copy-btn" onclick="copyJson()">copy</button>
+      </div>
+      <div class="card-body">
+        <div class="json-viewer" id="json-viewer"></div>
+      </div>
+    </div>
+
+    <!-- Download & share -->
+    <div class="btn-row" style="margin-top:.5rem">
+      <button class="btn btn-ghost" onclick="downloadCert()">💾 Download Certificate (.json)</button>
+      <button class="btn btn-ghost" onclick="copyUrl()">🔗 Copy Certificate URL</button>
+      <a href="/timestamp.html" class="btn btn-primary">✏️ Sign another document</a>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <strong style="color:var(--text)">PQCServer</strong> — Cryptographic Timestamp Service &nbsp;·&nbsp;
+  <a href="/timestamp-info.html">About Timestamps</a> &nbsp;·&nbsp;
+  <a href="/timestamp.html">Sign Document</a> &nbsp;·&nbsp;
+  <a href="/verify.html">Verify</a>
+</footer>
+
+<script src="/assets/auth.js"></script>
+<script type="module">
+let certData = null;
+let ml_dsa   = null;
+
+// Extract ID from URL: /ts/ts_xxxxxxxxxx
+const tsId = window.location.pathname.split('/').filter(Boolean).pop();
+
+async function loadCrypto() {
+  if (ml_dsa) return true;
+  try {
+    const m = await import('https://esm.sh/pqc@1.0.13');
+    ml_dsa = m.ml_dsa; return true;
+  } catch(e) {
+    try { const m = await import('https://esm.run/pqc@1.0.13'); ml_dsa = m.ml_dsa; return true; }
+    catch(e2) { return false; }
+  }
+}
+
+function fromB64(s) {
+  const b = atob(s.trim()); const a = new Uint8Array(b.length);
+  for (let i=0;i<b.length;i++) a[i]=b.charCodeAt(i); return a;
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/1048576).toFixed(1) + ' MB';
+}
+
+function show(id) {
+  ['state-loading','state-notfound','state-cert'].forEach(s => {
+    document.getElementById(s).style.display = s===id ? 'block' : 'none';
+  });
+}
+
+async function init() {
+  PQC.initTopbar();
+  if (!tsId || tsId === 'ts') { show('state-notfound'); return; }
+
+  try {
+    const r = await fetch(`/api/timestamp.php?id=${encodeURIComponent(tsId)}`);
+    const d = await r.json();
+    if (!d.ok) { show('state-notfound'); return; }
+
+    certData = d;
+    populateCertificate(d);
+    show('state-cert');
+
+    // Auto-verify signature
+    loadCrypto().then(() => verifyCertSignature(d));
+
+  } catch(e) {
+    show('state-notfound');
+  }
+}
+
+function populateCertificate(d) {
+  const cert = d.certificate ? JSON.parse(d.certificate) : d;
+
+  document.title = `Certificate ${d.id} — PQCServer`;
+  document.getElementById('cert-title').textContent =
+    cert.document?.filename || cert.filename || 'Timestamp Certificate';
+  document.getElementById('cert-id-display').textContent = d.id;
+  document.getElementById('cert-filename').textContent =
+    cert.document?.filename || cert.filename || 'Document';
+
+  set('f-id',         d.id);
+  set('f-timestamp',  cert.timestamp?.iso || cert.server_timestamp || d.created_at || '—');
+  set('f-hash',       (cert.document?.hash_sha256 || cert.document_hash || '—').substring(0,32) + '…');
+  set('f-filename',   cert.document?.filename || cert.filename || '—');
+  set('f-filesize',   cert.document?.size_bytes ? formatSize(cert.document.size_bytes) :
+                      (cert.file_size_bytes ? formatSize(cert.file_size_bytes) : '—'));
+
+  const signerName = cert.signer?.display_name || cert.signer_name ||
+                     (cert.signer?.username ? '@'+cert.signer.username : 'Anonymous');
+  const signerUser = cert.signer?.username ? ` (@${cert.signer.username})` : '';
+  set('f-signer', signerName + signerUser);
+
+  const pubkey = cert.signer?.public_key_dsa || cert.public_key_dsa || '';
+  set('f-pubkey',     pubkey ? pubkey.substring(0,48)+'…' : '—');
+
+  const sig = cert.signer?.signature || cert.signature || '';
+  set('f-sig',        sig ? sig.substring(0,48)+'…' : '—');
+
+  const serverSig = cert.timestamp?.server_sig || '—';
+  set('f-serversig',  serverSig !== '—' ? serverSig.substring(0,48)+'…' : '—');
+
+  if (cert.document?.notes) {
+    document.getElementById('f-notes').textContent = cert.document.notes;
+    document.getElementById('f-notes').style.display = 'block';
+  }
+
+  // Raw JSON
+  const rawJson = d.certificate || JSON.stringify(cert, null, 2);
+  document.getElementById('json-viewer').textContent =
+    typeof rawJson === 'string' ? rawJson : JSON.stringify(rawJson, null, 2);
+}
+
+function set(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val || '—';
+}
+
+async function verifyCertSignature(d) {
+  const resultEl = document.getElementById('sig-verify-result');
+  const cert = d.certificate ? JSON.parse(d.certificate) : d;
+
+  const pubKeyB64 = cert.signer?.public_key_dsa || cert.public_key_dsa;
+  const sigB64    = cert.signer?.signature || cert.signature;
+  const hashHex   = cert.document?.hash_sha256 || cert.document_hash;
+
+  if (!pubKeyB64 || !sigB64 || !hashHex) {
+    resultEl.className = 'verify-result fail';
+    resultEl.innerHTML = '⚠ Certificate incomplete — cannot verify signature';
+    return;
+  }
+
+  const loaded = await loadCrypto();
+  if (!loaded) {
+    resultEl.className = 'verify-result pending';
+    resultEl.innerHTML = '⚠ Crypto library unavailable — cannot auto-verify';
+    return;
+  }
+
+  try {
+    const pubKey = fromB64(pubKeyB64);
+    const sig    = fromB64(sigB64);
+    const msg    = new TextEncoder().encode(hashHex);
+
+    let scheme;
+    if      (pubKey.length === 1312) scheme = ml_dsa.ml_dsa44;
+    else if (pubKey.length === 1952) scheme = ml_dsa.ml_dsa65;
+    else if (pubKey.length === 2592) scheme = ml_dsa.ml_dsa87;
+    else throw new Error('Unknown key length');
+
+    const valid = scheme.verify(pubKey, msg, sig);
+
+    if (valid) {
+      resultEl.className = 'verify-result ok';
+      resultEl.innerHTML = '✓ ML-DSA signature is VALID — this document hash was signed by the recorded key';
+      document.getElementById('cert-badge').textContent = '✓';
+      document.getElementById('cert-badge').className   = 'cert-badge';
+    } else {
+      resultEl.className = 'verify-result fail';
+      resultEl.innerHTML = '✗ ML-DSA signature is INVALID — certificate may be tampered';
+      document.getElementById('cert-badge').textContent = '✗';
+      document.getElementById('cert-badge').className   = 'cert-badge invalid';
+    }
+  } catch(e) {
+    resultEl.className = 'verify-result fail';
+    resultEl.innerHTML = '✗ Signature verification error: ' + e.message;
+  }
+}
+
+window.verifyDocument = async function() {
+  const fileInput = document.getElementById('verify-file');
+  if (!fileInput.files.length) {
+    document.getElementById('verify-file-status').innerHTML =
+      '<div class="status status-fail">✗ Select the document file first</div>';
+    return;
+  }
+
+  const file = fileInput.files[0];
+  document.getElementById('verify-file-status').innerHTML =
+    '<div class="status status-info"><span class="spinner"></span> Computing SHA-256…</div>';
+
+  try {
+    const buffer  = await file.arrayBuffer();
+    const hashBuf = await crypto.subtle.digest('SHA-256', buffer);
+    const hashHex = Array.from(new Uint8Array(hashBuf))
+      .map(b => b.toString(16).padStart(2,'0')).join('');
+
+    const cert    = certData.certificate ? JSON.parse(certData.certificate) : certData;
+    const certHash = cert.document?.hash_sha256 || cert.document_hash || '';
+
+    const resultDiv = document.getElementById('doc-verify-result');
+    const bodyDiv   = document.getElementById('doc-verify-body');
+    resultDiv.style.display = 'block';
+
+    if (hashHex === certHash) {
+      bodyDiv.innerHTML = `
+        <div class="status status-ok" style="display:flex;margin-bottom:1rem">
+          ✓ Document MATCHES the certificate
+        </div>
+        <p style="font-size:.78rem;color:var(--text-mid);line-height:1.7">
+          The SHA-256 hash of <strong style="color:var(--bright)">${file.name}</strong>
+          exactly matches the hash recorded in this certificate.<br>
+          This document has not been modified since it was timestamped on
+          <strong style="color:var(--bright)">${cert.timestamp?.iso || cert.server_timestamp}</strong>.
+        </p>`;
+      document.getElementById('verify-file-status').innerHTML =
+        '<div class="status status-ok">✓ Hash matches — document is unmodified</div>';
+    } else {
+      bodyDiv.innerHTML = `
+        <div class="status status-fail" style="display:flex;margin-bottom:1rem">
+          ✗ Document does NOT match the certificate
+        </div>
+        <p style="font-size:.78rem;color:var(--text-mid);line-height:1.7">
+          The SHA-256 hash of <strong style="color:var(--bright)">${file.name}</strong>
+          does not match the hash in this certificate.<br>
+          Either this is a different file, or the document has been modified after signing.
+        </p>
+        <div style="margin-top:.8rem;font-size:.68rem;font-family:var(--mono);color:var(--text-dim)">
+          Expected: <span style="color:var(--accent)">${certHash}</span><br>
+          Got:      <span style="color:var(--red)">${hashHex}</span>
+        </div>`;
+      document.getElementById('verify-file-status').innerHTML =
+        '<div class="status status-fail">✗ Hash mismatch — document has been modified</div>';
+    }
+  } catch(e) {
+    document.getElementById('verify-file-status').innerHTML =
+      `<div class="status status-fail">✗ Error: ${e.message}</div>`;
+  }
+};
+
+window.downloadCert = function() {
+  if (!certData) return;
+  const json = certData.certificate || JSON.stringify(certData, null, 2);
+  const blob = new Blob([typeof json === 'string' ? json : JSON.stringify(json, null, 2)],
+    { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = `pqcserver-cert-${certData.id}.json`;
+  a.click();
+};
+
+window.copyUrl = function() {
+  navigator.clipboard.writeText(window.location.href).then(() => {
+    const btn = document.querySelector('.btn-row .btn-ghost:nth-child(2)');
+    if (btn) { btn.textContent = '✓ URL copied!'; setTimeout(() => btn.textContent = '🔗 Copy Certificate URL', 1500); }
+  });
+};
+
+window.copyJson = function() {
+  const el = document.getElementById('json-viewer');
+  if (!el) return;
+  navigator.clipboard.writeText(el.textContent).then(() => {
+    const btn = el.closest('.card')?.querySelector('.copy-btn');
+    if (btn) { btn.textContent = 'copied!'; setTimeout(() => btn.textContent = 'copy', 1500); }
+  });
+};
+
+init();
+</script>
+</body>
+</html>

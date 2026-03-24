@@ -1,0 +1,18 @@
+User-agent: *
+Allow: /
+Allow: /features/
+Allow: /about.html
+Allow: /notary.html
+
+# No indexing of user-specific pages
+Disallow: /dashboard.html
+Disallow: /keygen.html
+Disallow: /vault.html
+Disallow: /vault_upload.html
+Disallow: /m/
+Disallow: /u/
+Disallow: /verify/
+Disallow: /api/
+Disallow: /ts/
+
+Sitemap: https://pqcserver.com/sitemap.xml

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>About PQCServer — Zero-Knowledge Post-Quantum Encryption</title>
+<meta name="description" content="Learn how PQCServer works. Zero-knowledge architecture, NIST FIPS-203 ML-KEM and FIPS-204 ML-DSA algorithms, and our commitment to privacy-first design.">
+<meta name="keywords" content="zero knowledge encryption, post-quantum cryptography architecture, ML-KEM ML-DSA, NIST FIPS-203 FIPS-204, privacy by design">
+<link rel="stylesheet" href="/assets/style.css">
+<script>
+window.PQC_PAGE = {
+  title: 'About PQCServer — Zero-Knowledge Post-Quantum Encryption',
+  description: 'Learn how PQCServer works. Zero-knowledge architecture, NIST FIPS-203 and FIPS-204 algorithms explained.',
+};
+</script>
+<script src="/assets/seo.js" defer></script>
+<style>
+.page-about { max-width:760px;margin:0 auto;padding:100px 1.5rem 4rem;position:relative;z-index:1; }
+.eyebrow { font-size:.62rem;letter-spacing:2.5px;text-transform:uppercase;color:var(--accent);margin-bottom:1.2rem;display:flex;align-items:center;gap:10px; }
+.eyebrow::before { content:'';width:20px;height:1px;background:var(--accent); }
+h1 { font-family:var(--sans);font-weight:800;font-size:clamp(1.8rem,4vw,3rem);color:var(--bright);line-height:1.05;letter-spacing:-1px;margin-bottom:1rem; }
+h2 { font-family:var(--sans);font-weight:700;font-size:1.3rem;color:var(--bright);margin:2.5rem 0 .8rem; }
+p { font-size:.82rem;color:var(--text-mid);line-height:1.8;margin-bottom:1rem; }
+p strong { color:var(--bright); }
+p a { color:var(--accent);text-decoration:none; }
+p a:hover { text-decoration:underline; }
+
+.algo-cards { display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin:1.2rem 0; }
+.algo-card { background:var(--surface);padding:1.4rem; }
+.algo-fips { font-size:.6rem;letter-spacing:1px;text-transform:uppercase;color:var(--accent);margin-bottom:.5rem; }
+.algo-name { font-family:var(--sans);font-weight:800;font-size:1.2rem;color:var(--bright);margin-bottom:.3rem; }
+.algo-full { font-size:.65rem;color:var(--text-dim);margin-bottom:.8rem;line-height:1.4; }
+.algo-specs { font-size:.68rem;color:var(--text-mid);line-height:1.8; }
+.algo-specs span { color:var(--accent); }
+
+.arch-diagram {
+  background:var(--bg);border:1px solid var(--border);border-radius:6px;
+  padding:1.2rem;font-size:.7rem;color:var(--text-mid);line-height:1.9;
+  font-family:var(--mono);margin:1.2rem 0;overflow-x:auto;
+}
+
+.principle-list { list-style:none;display:flex;flex-direction:column;gap:8px;margin:1rem 0; }
+.principle-list li { font-size:.8rem;color:var(--text-mid);display:flex;align-items:flex-start;gap:10px;line-height:1.6; }
+.principle-list li::before { content:'→';color:var(--accent);flex-shrink:0;margin-top:2px; }
+
+.ecosystem { display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;margin:1.2rem 0; }
+.eco-card { background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:1rem; }
+.eco-domain { font-size:.8rem;color:var(--accent);margin-bottom:.3rem; }
+.eco-desc { font-size:.72rem;color:var(--text-dim);line-height:1.5; }
+
+@media(max-width:640px){ .algo-cards,.ecosystem{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="/" class="topbar-logo"><div class="logo-pulse"></div>PQCServer</a>
+  <nav class="topbar-nav" id="topbar-nav"></nav>
+</div>
+
+<div class="page-about">
+
+  <div class="eyebrow">About PQCServer</div>
+  <h1>Privacy-first.<br>Quantum-ready.<br>Zero-knowledge.</h1>
+
+  <p>
+    PQCServer is a free, open-architecture service for post-quantum encrypted messaging,
+    file storage, and document notarization. It was built to make NIST 2024 post-quantum
+    cryptography accessible to everyone — not just developers and researchers.
+  </p>
+
+  <p>
+    The service is part of a privacy ecosystem that includes
+    <a href="https://onionmail.org" target="_blank">onionmail.org</a> (anonymous email),
+    <a href="https://oniondrive.org" target="_blank">oniondrive.org</a> (anonymous file storage),
+    <a href="https://pqctoolkit.com" target="_blank">pqctoolkit.com</a> (standalone PQC toolkit),
+    and <a href="https://postquantum.tools" target="_blank">postquantum.tools</a> (educational hub).
+  </p>
+
+  <!-- ZERO KNOWLEDGE -->
+  <h2>Zero-Knowledge Architecture</h2>
+
+  <p>
+    The term "zero-knowledge" is often used loosely in the security industry.
+    On PQCServer it has a precise technical meaning:
+    <strong>the server is cryptographically incapable of reading your data</strong>.
+  </p>
+
+  <p>
+    This is not a policy choice or a promise — it is a mathematical property of the system.
+    All cryptographic operations happen exclusively in your browser using the
+    <strong>Web Crypto API</strong> and the <strong>pqc JavaScript library</strong>.
+    Your private keys never leave your device. The server receives only ciphertext.
+  </p>
+
+  <div class="arch-diagram">
+Browser (your device)                    PQCServer                  Recipient browser
+───────────────────                      ─────────                  ─────────────────
+ML-KEM keygen()                          │                          │
+  publicKey  → saved to server ─────────►│ MongoDB: users           │
+  secretKey  → stays here only           │                          │
+                                         │                          │
+ML-KEM.encapsulate(recipientPubKey)      │                          │
+  sharedSecret                          │                          │
+  cipherText  ──────────────────────────►│                          │
+AES-256-GCM.encrypt(sharedSecret, msg)  │                          │
+  ciphertext ──────────────────────────►│ MongoDB: messages        │
+  ◄── shortlink ────────────────────────│                          │
+                                         │                          │
+                                         │◄── GET /m/:id ───────────│
+                                         │─── ciphertext ──────────►│
+                                         │                          │
+                                         │            ML-KEM.decapsulate(cipherText, secretKey)
+                                         │                          │  → sharedSecret
+                                         │                          │  → plaintext
+                                         │                          │
+Server knowledge: ciphertext only. Plaintext: never.
+  </div>
+
+  <!-- ALGORITHMS -->
+  <h2>Cryptographic Algorithms</h2>
+
+  <p>
+    PQCServer uses exclusively algorithms standardized by
+    <a href="https://csrc.nist.gov/projects/post-quantum-cryptography" target="_blank">NIST</a>
+    in August 2024 after a 7-year global competition involving hundreds of submissions
+    from academic and industry researchers worldwide.
+  </p>
+
+  <div class="algo-cards">
+    <div class="algo-card">
+      <div class="algo-fips">NIST FIPS-203 · 2024</div>
+      <div class="algo-name">ML-KEM</div>
+      <div class="algo-full">Module Lattice-Based Key Encapsulation Mechanism<br>(formerly CRYSTALS-Kyber)</div>
+      <div class="algo-specs">
+        Used for: <span>encryption</span><br>
+        Replaces: <span>RSA, ECDH</span><br>
+        Security: <span>128/192/256-bit</span><br>
+        Math: <span>Module-LWE problem</span>
+      </div>
+    </div>
+    <div class="algo-card">
+      <div class="algo-fips">NIST FIPS-204 · 2024</div>
+      <div class="algo-name">ML-DSA</div>
+      <div class="algo-full">Module Lattice-Based Digital Signature Algorithm<br>(formerly CRYSTALS-Dilithium)</div>
+      <div class="algo-specs">
+        Used for: <span>signatures</span><br>
+        Replaces: <span>RSA sign, ECDSA</span><br>
+        Security: <span>128/192/256-bit</span><br>
+        Math: <span>Module-LWE problem</span>
+      </div>
+    </div>
+    <div class="algo-card">
+      <div class="algo-fips">Standard · RFC</div>
+      <div class="algo-name">AES-256-GCM</div>
+      <div class="algo-full">Advanced Encryption Standard<br>Galois/Counter Mode</div>
+      <div class="algo-specs">
+        Used for: <span>symmetric encryption</span><br>
+        Key source: <span>ML-KEM shared secret</span><br>
+        Security: <span>256-bit</span><br>
+        Quantum-safe: <span>✓ already</span>
+      </div>
+    </div>
+  </div>
+
+  <p>
+    The hybrid scheme combines ML-KEM (for quantum-safe key exchange) with AES-256-GCM
+    (for symmetric encryption of the actual data). This is the same pattern recommended by
+    NIST, used by Google, Cloudflare, and AWS in their own post-quantum migrations.
+    AES-256 is already quantum-safe — Grover's algorithm only halves its effective key length,
+    which 256-bit keys comfortably absorb.
+  </p>
+
+  <!-- DESIGN PRINCIPLES -->
+  <h2>Design Principles</h2>
+
+  <ul class="principle-list">
+    <li><strong>Server-side zero-knowledge by construction.</strong> Not a policy. The server architecture makes it mathematically impossible to access plaintext.</li>
+    <li><strong>No installation required.</strong> Everything runs in the browser. No plugins, extensions or apps. Any modern browser on any device works.</li>
+    <li><strong>NIST 2024 standards only.</strong> No custom or unreviewed algorithms. Every cryptographic primitive used has been through years of public scrutiny.</li>
+    <li><strong>No tracking, no analytics, no cookies.</strong> We collect the minimum data required to provide the service. We do not sell or share any data.</li>
+    <li><strong>Free forever.</strong> Encryption is a right, not a premium feature. The full service is free with no artificial limits.</li>
+    <li><strong>Embeddable by design.</strong> The widget architecture allows any website to add post-quantum encryption with one line of code.</li>
+    <li><strong>Open architecture.</strong> The cryptographic approach is fully documented and auditable. The server-side code handles only ciphertext.</li>
+  </ul>
+
+  <!-- ECOSYSTEM -->
+  <h2>The Privacy Ecosystem</h2>
+
+  <p>PQCServer is part of a broader set of privacy tools designed to work together:</p>
+
+  <div class="ecosystem">
+    <div class="eco-card">
+      <div class="eco-domain"><a href="https://onionmail.org" target="_blank">onionmail.org</a></div>
+      <div class="eco-desc">Anonymous email service. Integrates PQCServer widget for post-quantum encrypted message attachments.</div>
+    </div>
+    <div class="eco-card">
+      <div class="eco-domain"><a href="https://oniondrive.org" target="_blank">oniondrive.org</a></div>
+      <div class="eco-desc">Anonymous file storage. Complementary to PQCServer vault — anonymous storage vs quantum-safe encrypted storage.</div>
+    </div>
+    <div class="eco-card">
+      <div class="eco-domain"><a href="https://pqctoolkit.com" target="_blank">pqctoolkit.com</a></div>
+      <div class="eco-desc">Standalone browser-based PQC toolkit. Generate keys, encrypt, sign and verify — without any server involvement.</div>
+    </div>
+    <div class="eco-card">
+      <div class="eco-domain"><a href="https://postquantum.tools" target="_blank">postquantum.tools</a></div>
+      <div class="eco-desc">Educational hub explaining post-quantum cryptography, the quantum threat timeline, and NIST 2024 standards.</div>
+    </div>
+  </div>
+
+  <!-- STANDARDS -->
+  <h2>Standards &amp; References</h2>
+
+  <p>
+    <a href="https://csrc.nist.gov/pubs/fips/203/final" target="_blank">NIST FIPS-203</a> — ML-KEM standard (August 2024)<br>
+    <a href="https://csrc.nist.gov/pubs/fips/204/final" target="_blank">NIST FIPS-204</a> — ML-DSA standard (August 2024)<br>
+    <a href="https://csrc.nist.gov/pubs/fips/205/final" target="_blank">NIST FIPS-205</a> — SLH-DSA standard (August 2024)<br>
+    <a href="https://openquantumsafe.org" target="_blank">Open Quantum Safe Project</a> — open source PQC implementations<br>
+    <a href="https://blog.cloudflare.com/pq-2025/" target="_blank">Cloudflare — State of post-quantum internet 2025</a><br>
+    <a href="https://aws.amazon.com/security/post-quantum-cryptography/" target="_blank">AWS Post-Quantum Cryptography</a>
+  </p>
+
+  <div class="btn-row" style="margin-top:2rem">
+    <a href="/register.html" class="btn btn-primary">Get started free →</a>
+    <a href="/" class="btn btn-ghost">← Back to home</a>
+  </div>
+
+</div>
+
+<footer>
+  <strong style="color:var(--text)">PQCServer</strong> — About
+  &nbsp;|&nbsp; <a href="/">Home</a> · <a href="/features/messaging.html">Messaging</a> · <a href="/features/vault.html">Vault</a> · <a href="/notary.html">Notary</a>
+  <br>Zero-knowledge · No tracking · No cookies · Free forever
+</footer>
+
+<script src="/assets/auth.js"></script>
+<script>PQC.initTopbar();</script>
+</body>
+</html>

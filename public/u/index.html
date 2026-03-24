@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PQCServer — User Profile</title>
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+<div class="topbar">
+  <a href="/" class="topbar-logo"><div class="logo-pulse"></div>PQCServer</a>
+  <nav class="topbar-nav" id="topbar-nav"></nav>
+</div>
+
+<div class="page" style="max-width:600px">
+
+  <!-- LOADING -->
+  <div id="state-loading">
+    <div style="margin-top:3rem;text-align:center">
+      <span class="spinner"></span>
+      <span style="font-size:.8rem;color:var(--text-mid);margin-left:8px">Loading profile…</span>
+    </div>
+  </div>
+
+  <!-- NOT FOUND -->
+  <div id="state-notfound" style="display:none">
+    <div class="step-label">Profile</div>
+    <div class="page-title">User not found</div>
+    <div class="info-box warn" style="margin-top:1rem">
+      This username is not registered on PQCServer.
+    </div>
+    <div class="btn-row" style="margin-top:1rem">
+      <a href="/register.html" class="btn btn-primary">Create an account →</a>
+      <a href="/" class="btn btn-ghost">← Home</a>
+    </div>
+  </div>
+
+  <!-- PROFILE -->
+  <div id="state-profile" style="display:none">
+
+    <!-- Profile header -->
+    <div style="display:flex;align-items:center;gap:1.2rem;margin-bottom:1.5rem">
+      <div style="
+        width:56px;height:56px;border-radius:50%;
+        background:linear-gradient(135deg,rgba(0,212,255,.2),rgba(124,58,237,.2));
+        border:1px solid rgba(0,212,255,.3);
+        display:flex;align-items:center;justify-content:center;
+        font-size:1.5rem;flex-shrink:0">👤</div>
+      <div>
+        <div style="font-family:var(--sans);font-size:1.4rem;font-weight:800;color:var(--bright)" id="p-displayname">—</div>
+        <div style="font-size:.72rem;color:var(--accent)" id="p-username">—</div>
+      </div>
+    </div>
+
+    <!-- Keys status -->
+    <div id="p-nokeys" style="display:none">
+      <div class="info-box warn">
+        <strong>⚠ This user has not yet published their public keys.</strong><br>
+        They need to complete their key setup at
+        <a href="/keygen.html" style="color:var(--warn)">pqcserver.com/keygen</a>
+        before you can send them encrypted messages.
+      </div>
+    </div>
+
+    <!-- Send encrypted message -->
+    <div id="p-encrypt-section">
+      <div class="card" style="border-color:rgba(0,212,255,.2)">
+        <div class="card-head"><span class="accent">🔒 Send an encrypted message</span></div>
+        <div class="card-body">
+          <div class="info-box" style="margin-bottom:1rem">
+            Your message will be encrypted in your browser using <strong>ML-KEM + AES-256-GCM</strong>.
+            Only <strong id="p-name-inline">this user</strong> can decrypt it with their private key.
+            The server never sees the content.
+          </div>
+
+          <div class="form-group">
+            <label>Message</label>
+            <textarea id="msg-input" rows="5" placeholder="Type your message…"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>File attachment <span style="color:var(--text-dim)">(optional)</span></label>
+            <input type="file" id="file-input" style="
+              width:100%;background:var(--bg);border:1px solid var(--border);
+              border-radius:5px;color:var(--text);font-family:var(--mono);
+              font-size:.8rem;padding:9px 12px;cursor:pointer">
+            <div id="file-status" style="margin-top:4px"></div>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn btn-primary" id="enc-btn" onclick="encryptAndSend()">
+              🔒 Encrypt &amp; Get Shortlink
+            </button>
+          </div>
+          <div id="enc-status"></div>
+        </div>
+      </div>
+
+      <!-- Result -->
+      <div id="result-card" style="display:none">
+        <div class="card" style="border-color:rgba(0,229,160,.3)">
+          <div class="card-head" style="color:var(--green)">✓ Encrypted — share this shortlink</div>
+          <div class="card-body">
+            <div class="form-group">
+              <label>Shortlink — paste this anywhere</label>
+              <div class="output-block">
+                <textarea id="shortlink-out" readonly rows="1"></textarea>
+                <button class="copy-btn" onclick="copyShortlink()">copy</button>
+              </div>
+            </div>
+            <div id="result-meta" style="margin-top:.6rem;font-size:.7rem;color:var(--text-dim)"></div>
+            <div class="btn-row">
+              <button class="btn btn-ghost" onclick="resetForm()">↺ Send another message</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Public key section -->
+    <div class="card" style="margin-top:1.2rem">
+      <div class="card-head"><span class="accent">Public Key</span> — ML-KEM</div>
+      <div class="card-body">
+        <div class="output-block">
+          <textarea id="p-pubkey" readonly rows="3" style="font-size:.65rem"></textarea>
+          <button class="copy-btn" onclick="copyPubkey()">copy</button>
+        </div>
+        <p style="font-size:.68rem;color:var(--text-dim);margin-top:.5rem;line-height:1.6">
+          This is a post-quantum ML-KEM public key (NIST FIPS-203).
+          Anyone can use it to encrypt messages that only this user can read.
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  <strong style="color:var(--text)">PQCServer</strong> —
+  Post-Quantum Encrypted Messaging · All encryption happens in your browser.
+  <br><a href="/">Home</a> · <a href="/register.html">Create account</a> · <a href="/encrypt.html">Encrypt</a>
+</footer>
+
+<script src="/assets/auth.js"></script>
+<script src="/assets/gridfs.js"></script>
+<script type="module">
+import { loadCrypto, encryptText, fromB64 } from '/assets/crypto.js';
+
+let profileData = null;
+
+// Extract username from URL: /u/username
+const pathParts = window.location.pathname.split('/').filter(Boolean);
+const username  = pathParts[pathParts.length - 1];
+if (username) document.title = `@${username} — PQCServer`;
+
+function show(id) {
+  ['state-loading','state-notfound','state-profile']
+    .forEach(s => { document.getElementById(s).style.display = s===id ? 'block' : 'none'; });
+}
+
+function setStatus(id, type, msg) {
+  const e = document.getElementById(id);
+  if (e) e.innerHTML = `<div class="status status-${type}">${msg}</div>`;
+}
+
+function setProgress(pct, label) {
+  setStatus('enc-status','info',
+    `<span class="spinner"></span> ${label} ${pct>0?'('+pct+'%)':''}`);
+}
+
+async function init() {
+  PQC.initTopbar();
+  loadCrypto(); // preload in background
+
+  if (!username || username === 'u') { show('state-notfound'); return; }
+
+  try {
+    const r = await fetch(`/api/pubkey.php?u=${encodeURIComponent(username)}`);
+    const d = await r.json();
+    if (!d.ok) { show('state-notfound'); return; }
+    profileData = d;
+    document.getElementById('p-displayname').textContent = d.display_name || username;
+    document.getElementById('p-username').textContent    = '@' + username;
+    document.getElementById('p-name-inline').textContent = d.display_name || username;
+    if (!d.public_key_kem) {
+      document.getElementById('p-nokeys').style.display        = 'block';
+      document.getElementById('p-encrypt-section').style.display = 'none';
+    } else {
+      document.getElementById('p-pubkey').value = d.public_key_kem;
+    }
+    show('state-profile');
+  } catch(e) {
+    show('state-notfound');
+  }
+}
+
+window.encryptAndSend = async function() {
+  const msg       = document.getElementById('msg-input').value;
+  const fileInput = document.getElementById('file-input');
+
+  if (!msg && !fileInput.files.length) {
+    setStatus('enc-status','fail','✗ Write a message or attach a file'); return;
+  }
+
+  setStatus('enc-status','info','<span class="spinner"></span> Loading crypto library…');
+  document.getElementById('enc-btn').disabled = true;
+
+  try {
+    await loadCrypto();
+
+    // Step 1 — Encrypt text
+    setProgress(0, 'Encrypting message…');
+    const { envelope, sharedSecret } = await encryptText(profileData.public_key_kem, msg);
+
+    // Step 2 — Upload file via GridFS (if any)
+    let fileId = null;
+    if (fileInput.files.length) {
+      const file = fileInput.files[0];
+      setStatus('file-status','info',
+        `<span class="spinner"></span> Encrypting and uploading ${file.name}…`);
+      fileId = await PQCGFS.uploadFile(file, sharedSecret, (pct, label) => {
+        setStatus('file-status','info',
+          `<span class="spinner"></span> ${label}`);
+        setProgress(pct, 'Uploading file…');
+      });
+      setStatus('file-status','ok',
+        `✓ ${file.name} (${PQCGFS.formatSize(file.size)}) uploaded`);
+    }
+
+    // Step 3 — Store envelope + file_id
+    setProgress(95, 'Saving to server…');
+    const r = await fetch('/api/store.php', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ciphertext:      envelope,
+        file_id:         fileId,
+        recipient:       username,
+        burn_after_read: true,
+        ttl_days:        30,
+      })
+    });
+    const d = await r.json();
+
+    if (d.ok) {
+      document.getElementById('shortlink-out').value = d.shortlink;
+      document.getElementById('result-meta').innerHTML =
+        `Expires: <strong style="color:var(--text)">${d.expires}</strong> &nbsp;|&nbsp; ` +
+        `Burn after read: <strong style="color:var(--text)">Yes</strong>`;
+      document.getElementById('result-card').style.display = 'block';
+      document.getElementById('result-card').scrollIntoView({behavior:'smooth', block:'center'});
+      setStatus('enc-status','ok','✓ Message encrypted and ready to share');
+    } else {
+      throw new Error(d.error || 'Server error');
+    }
+  } catch(e) {
+    setStatus('enc-status','fail','✗ ' + e.message);
+    document.getElementById('enc-btn').disabled = false;
+  }
+};
+
+window.resetForm = function() {
+  document.getElementById('msg-input').value = '';
+  document.getElementById('file-input').value = '';
+  document.getElementById('result-card').style.display = 'none';
+  document.getElementById('enc-btn').disabled = false;
+  ['enc-status','file-status'].forEach(id => {
+    const e = document.getElementById(id); if (e) e.innerHTML = '';
+  });
+};
+
+window.copyShortlink = function() {
+  const el = document.getElementById('shortlink-out');
+  if (!el) return;
+  navigator.clipboard.writeText(el.value).then(() => {
+    const btn = el.closest('.output-block')?.querySelector('.copy-btn');
+    if (btn) { btn.textContent='copied!'; setTimeout(()=>btn.textContent='copy',1500); }
+  });
+};
+
+window.copyPubkey = function() {
+  const el = document.getElementById('p-pubkey');
+  if (!el) return;
+  navigator.clipboard.writeText(el.value).then(() => {
+    const btn = el.closest('.output-block')?.querySelector('.copy-btn');
+    if (btn) { btn.textContent='copied!'; setTimeout(()=>btn.textContent='copy',1500); }
+  });
+};
+
+init();
+</script>
+</body>
+</html>

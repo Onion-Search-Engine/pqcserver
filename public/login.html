@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PQCServer &mdash; Log In</title>
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+<div class="topbar">
+  <a href="/" class="topbar-logo"><div class="logo-pulse"></div>PQCServer</a>
+  <nav class="topbar-nav" id="topbar-nav">
+    <a href="/login.html" class="hide-mobile">Log in</a>
+    <a href="/register.html" class="btn-nav">Register free</a>
+  </nav>
+</div>
+<div class="page" style="max-width:420px">
+  <div class="step-label">Welcome back</div>
+  <div class="page-title">Log in</div>
+  <p class="page-sub">Access your profile and keys.</p>
+  <div class="card">
+    <div class="card-body">
+      <div class="form-group">
+        <label>Username or Email</label>
+        <input type="text" id="login" placeholder="username or you@example.com" autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="password" placeholder="Your password" autocomplete="current-password">
+      </div>
+      <button class="btn btn-primary" id="login-btn" onclick="doLogin()"
+              style="width:100%;justify-content:center;margin-top:.5rem">
+        Log in &rarr;
+      </button>
+      <div id="login-status"></div>
+      <div style="text-align:center;margin-top:1rem;font-size:.72rem;color:var(--text-dim)">
+        No account yet? <a href="/register.html" style="color:var(--accent)">Register free &rarr;</a>
+      </div>
+    </div>
+  </div>
+</div>
+<footer>
+  <strong style="color:var(--text)">PQCServer</strong> &mdash; Zero-knowledge &middot; No tracking
+  <br><a href="/">Home</a> &middot; <a href="/register.html">Register</a>
+</footer>
+<script src="/assets/auth.js"></script>
+<script>
+PQC.initTopbar().then(s => { if (s) window.location.href = "/dashboard.html"; });
+["login","password"].forEach(id => {
+  document.getElementById(id)?.addEventListener("keydown", e => { if (e.key==="Enter") doLogin(); });
+});
+function setStatus(id,type,msg){ const e=document.getElementById(id); if(e) e.innerHTML=`<div class="status status-${type}">${msg}</div>`; }
+async function doLogin() {
+  const login=document.getElementById("login").value.trim();
+  const password=document.getElementById("password").value;
+  const btn=document.getElementById("login-btn");
+  if (!login)    return setStatus("login-status","fail","\u2717 Enter your username or email");
+  if (!password) return setStatus("login-status","fail","\u2717 Enter your password");
+  btn.disabled=true;
+  setStatus("login-status","info","<span class=\"spinner\"></span> Logging in\u2026");
+  try {
+    const d = await (await fetch("/api/login.php",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({login,password})})).json();
+    if (d.ok) {
+      setStatus("login-status","ok","\u2713 Welcome back! Redirecting\u2026");
+      const params=new URLSearchParams(window.location.search);
+      const next=params.get("next")||(d.has_keys?"/dashboard.html":"/keygen.html");
+      setTimeout(()=>window.location.href=next, 600);
+    } else { setStatus("login-status","fail","\u2717 "+d.error); btn.disabled=false; }
+  } catch(e) { setStatus("login-status","fail","\u2717 Network error."); btn.disabled=false; }
+}
+</script>
+</body>
+</html>

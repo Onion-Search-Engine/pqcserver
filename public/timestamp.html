@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PQCServer — Cryptographic Timestamping & Document Signing</title>
+<meta name="description" content="Sign documents with post-quantum ML-DSA signatures and get verifiable cryptographic timestamps. Built on NIST FIPS-204.">
+<link rel="stylesheet" href="/assets/style.css">
+<style>
+.hero-ts {
+  max-width:900px; margin:0 auto;
+  padding:100px 1.5rem 4rem;
+  position:relative; z-index:1;
+}
+.hero-ts h1 {
+  font-family:var(--sans); font-weight:800;
+  font-size:clamp(2rem,5vw,3.5rem);
+  color:var(--bright); line-height:1.1;
+  letter-spacing:-1px; margin-bottom:1rem;
+}
+.hero-ts h1 em { font-style:italic; color:var(--text-mid); }
+.hero-ts h1 .hl { color:var(--green); }
+
+.flow-ts {
+  display:grid; grid-template-columns:repeat(4,1fr);
+  gap:1px; background:var(--border);
+  border:1px solid var(--border); border-radius:8px; overflow:hidden;
+  margin:2rem 0;
+}
+.flow-step-ts {
+  background:var(--surface); padding:1.5rem 1.2rem;
+  text-align:center;
+}
+.flow-step-ts .num {
+  font-family:var(--sans); font-size:2rem; font-weight:800;
+  color:var(--border); line-height:1; margin-bottom:.7rem;
+}
+.flow-step-ts .icon { font-size:1.5rem; margin-bottom:.5rem; }
+.flow-step-ts .title {
+  font-family:var(--sans); font-weight:700;
+  color:var(--bright); font-size:.85rem; margin-bottom:.3rem;
+}
+.flow-step-ts .body { font-size:.72rem; color:var(--text-mid); line-height:1.6; }
+
+.use-cases { display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; }
+.use-case-card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:8px; padding:1.5rem; transition:border-color .2s;
+}
+.use-case-card:hover { border-color:rgba(0,229,160,.25); }
+.use-case-icon { font-size:1.6rem; margin-bottom:.7rem; }
+.use-case-title {
+  font-family:var(--sans); font-weight:700;
+  color:var(--bright); font-size:.95rem; margin-bottom:.4rem;
+}
+.use-case-body { font-size:.75rem; color:var(--text-mid); line-height:1.7; }
+
+.legal-grid {
+  display:grid; grid-template-columns:1fr 1fr; gap:1.2rem;
+}
+.legal-card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:8px; padding:1.5rem;
+}
+.legal-card.ok   { border-color:rgba(0,229,160,.25); }
+.legal-card.warn { border-color:rgba(255,165,2,.2); }
+.legal-card-title {
+  font-family:var(--sans); font-weight:700;
+  font-size:.9rem; margin-bottom:.8rem; display:flex; align-items:center; gap:8px;
+}
+.legal-card.ok   .legal-card-title { color:var(--green); }
+.legal-card.warn .legal-card-title { color:var(--warn); }
+.legal-list { list-style:none; }
+.legal-list li {
+  font-size:.75rem; color:var(--text-mid); padding:4px 0;
+  border-bottom:1px solid var(--border); display:flex; gap:7px; line-height:1.5;
+}
+.legal-list li:last-child { border-bottom:none; }
+.ok-icon  { color:var(--green); flex-shrink:0; }
+.warn-icon { color:var(--warn); flex-shrink:0; }
+
+.cert-preview {
+  background:var(--bg); border:1px solid var(--border); border-radius:6px;
+  padding:1.2rem; font-size:.68rem; color:var(--text-mid);
+  line-height:1.8; font-family:var(--mono); overflow-x:auto;
+}
+.cert-preview .key   { color:var(--accent); }
+.cert-preview .value { color:var(--text); }
+.cert-preview .str   { color:var(--green); }
+
+@media(max-width:700px) {
+  .flow-ts { grid-template-columns:1fr 1fr; }
+  .use-cases, .legal-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="/" class="topbar-logo"><div class="logo-pulse"></div>PQCServer</a>
+  <nav class="topbar-nav" id="topbar-nav">
+    <a href="/sign.html" class="hide-mobile">Sign</a>
+    <a href="/verify.html" class="hide-mobile">Verify</a>
+    <a href="/encrypt.html" class="btn-nav">Encrypt →</a>
+  </nav>
+</div>
+
+<!-- HERO -->
+<div class="hero-ts">
+  <div class="step-label">Cryptographic Timestamping</div>
+  <h1>
+    Prove your document<br>
+    <em>existed and was</em><br>
+    <span class="hl">signed — quantum-safe</span>
+  </h1>
+  <p style="font-size:.95rem;color:var(--text-mid);max-width:560px;line-height:1.8;margin-bottom:2rem">
+    Sign any document with ML-DSA (NIST FIPS-204) and receive a verifiable cryptographic
+    certificate. Anyone can independently verify the signature — no need to trust PQCServer.
+    Your document never leaves your browser.
+  </p>
+  <div style="display:flex;gap:1rem;flex-wrap:wrap">
+    <a href="/sign.html" class="btn btn-primary" style="padding:12px 26px;font-size:.85rem">
+      ✏️ Sign a document
+    </a>
+    <a href="/verify.html" class="btn btn-ghost" style="padding:12px 26px;font-size:.85rem">
+      ✔️ Verify a certificate
+    </a>
+  </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<section style="max-width:900px;margin:0 auto;padding:2rem 1.5rem">
+  <div class="step-label">How it works</div>
+  <div class="page-title" style="margin-bottom:1.5rem">Four steps. Fully verifiable.</div>
+
+  <div class="flow-ts">
+    <div class="flow-step-ts">
+      <div class="num">01</div>
+      <div class="icon">📄</div>
+      <div class="title">Select document</div>
+      <p class="body">Upload any file — PDF, DOCX, image, ZIP. Or type text directly. The document stays in your browser.</p>
+    </div>
+    <div class="flow-step-ts">
+      <div class="num">02</div>
+      <div class="icon">🔢</div>
+      <div class="title">Hash computed</div>
+      <p class="body">Your browser computes a SHA-256 fingerprint of the document. This hash uniquely identifies the document content.</p>
+    </div>
+    <div class="flow-step-ts">
+      <div class="num">03</div>
+      <div class="icon">✏️</div>
+      <div class="title">ML-DSA signature</div>
+      <p class="body">The hash is signed with your ML-DSA private key — locally, in your browser. Only the signature is sent to PQCServer.</p>
+    </div>
+    <div class="flow-step-ts">
+      <div class="num">04</div>
+      <div class="icon">📜</div>
+      <div class="title">Certificate issued</div>
+      <p class="body">PQCServer records the hash, signature and UTC timestamp. You receive a shareable link and a JSON certificate to download.</p>
+    </div>
+  </div>
+
+  <div class="info-box" style="margin-top:0">
+    <strong>Zero-knowledge proof:</strong> PQCServer never receives your document — only its SHA-256 hash and the ML-DSA signature.
+    The certificate is mathematically verifiable by anyone, independently of PQCServer, using only the public key and the original document.
+  </div>
+</section>
+
+<!-- CERTIFICATE PREVIEW -->
+<section style="max-width:900px;margin:0 auto;padding:2rem 1.5rem">
+  <div class="step-label">Certificate format</div>
+  <div class="page-title" style="margin-bottom:1.5rem">What a certificate looks like</div>
+
+  <div class="grid-2">
+    <div>
+      <div class="cert-preview">
+<span class="key">{</span>
+  <span class="key">"version"</span>: <span class="str">"1"</span>,
+  <span class="key">"id"</span>: <span class="str">"ts_x7k2p9ab3f"</span>,
+  <span class="key">"service"</span>: <span class="str">"PQCServer Cryptographic Timestamp"</span>,
+  <span class="key">"document_hash"</span>: <span class="str">"a3f2c1e8d4b7..."</span>,
+  <span class="key">"hash_algorithm"</span>: <span class="str">"SHA-256"</span>,
+  <span class="key">"signature"</span>: <span class="str">"BASE64_MLSDA_SIG..."</span>,
+  <span class="key">"public_key_dsa"</span>: <span class="str">"BASE64_PUBKEY..."</span>,
+  <span class="key">"algorithm"</span>: <span class="str">"ML-DSA (NIST FIPS-204)"</span>,
+  <span class="key">"signer_name"</span>: <span class="str">"Alice Smith"</span>,
+  <span class="key">"filename"</span>: <span class="str">"contract_2026.pdf"</span>,
+  <span class="key">"timestamp_utc"</span>: <span class="str">"2026-03-17T14:32:01Z"</span>,
+  <span class="key">"verify_url"</span>: <span class="str">"https://pqcserver.com/verify.html?id=ts_x7k2p9ab3f"</span>,
+  <span class="key">"note"</span>: <span class="str">"Verifiable without trusting PQCServer"</span>
+<span class="key">}</span>
+      </div>
+    </div>
+    <div class="stack">
+      <div class="card" style="padding:1.2rem">
+        <div style="font-family:var(--sans);font-weight:700;color:var(--bright);margin-bottom:.5rem">✓ What the certificate proves</div>
+        <ul style="list-style:none;font-size:.75rem;color:var(--text-mid);line-height:2">
+          <li>• A document with this exact SHA-256 hash existed</li>
+          <li>• At the recorded UTC timestamp</li>
+          <li>• And was signed by the holder of the ML-DSA private key</li>
+          <li>• Corresponding to the public key in the certificate</li>
+        </ul>
+      </div>
+      <div class="card" style="padding:1.2rem">
+        <div style="font-family:var(--sans);font-weight:700;color:var(--bright);margin-bottom:.5rem">✗ What it does not prove</div>
+        <ul style="list-style:none;font-size:.75rem;color:var(--text-mid);line-height:2">
+          <li>• Legal identity of the signer (no eIDAS KYC)</li>
+          <li>• Signer had legal capacity at time of signing</li>
+          <li>• Equivalence to qualified electronic signature</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- USE CASES -->
+<section style="max-width:900px;margin:0 auto;padding:2rem 1.5rem">
+  <div class="step-label">Use cases</div>
+  <div class="page-title" style="margin-bottom:1.5rem">Where it already works today</div>
+
+  <div class="use-cases">
+    <div class="use-case-card">
+      <div class="use-case-icon">⚖️</div>
+      <div class="use-case-title">Private contracts</div>
+      <p class="use-case-body">Two parties agree to use ML-DSA signatures in their contract. Both sign and exchange certificates. Cryptographically binding if both parties accept the standard.</p>
+    </div>
+    <div class="use-case-card">
+      <div class="use-case-icon">💻</div>
+      <div class="use-case-title">Software releases</div>
+      <p class="use-case-body">Sign binary releases, firmware, or code packages. Users verify the signature matches the published public key — proving authenticity and integrity.</p>
+    </div>
+    <div class="use-case-card">
+      <div class="use-case-icon">📰</div>
+      <div class="use-case-title">Journalistic evidence</div>
+      <p class="use-case-body">Journalists sign documents and whistleblower material at collection time. The timestamp proves the document existed before a certain date, regardless of when it is published.</p>
+    </div>
+    <div class="use-case-card">
+      <div class="use-case-icon">🔬</div>
+      <div class="use-case-title">Research & IP</div>
+      <p class="use-case-body">Sign research papers, datasets, or invention disclosures to establish priority. The cryptographic timestamp proves who had what knowledge at what time.</p>
+    </div>
+    <div class="use-case-card">
+      <div class="use-case-icon">🏢</div>
+      <div class="use-case-title">Internal approvals</div>
+      <p class="use-case-body">Companies can use ML-DSA for internal document workflows — sign invoices, purchase orders, or HR documents without needing a qualified certificate authority.</p>
+    </div>
+    <div class="use-case-card">
+      <div class="use-case-icon">🗃️</div>
+      <div class="use-case-title">Audit trails</div>
+      <p class="use-case-body">Sign log files, configuration snapshots, or database exports at regular intervals. Creates a tamper-evident record that can be verified years later.</p>
+    </div>
+  </div>
+</section>
+
+<!-- LEGAL STATUS -->
+<section style="max-width:900px;margin:0 auto;padding:2rem 1.5rem">
+  <div class="step-label">Legal status</div>
+  <div class="page-title" style="margin-bottom:.5rem">Honest about what this is</div>
+  <p style="font-size:.82rem;color:var(--text-mid);margin-bottom:1.5rem;line-height:1.7;max-width:560px">
+    PQCServer certificates are cryptographically strong but are not yet qualified electronic
+    signatures under eIDAS. Here is a transparent breakdown:
+  </p>
+
+  <div class="legal-grid">
+    <div class="legal-card ok">
+      <div class="legal-card-title">✓ Works today</div>
+      <ul class="legal-list">
+        <li><span class="ok-icon">✓</span> Cryptographic proof of document integrity</li>
+        <li><span class="ok-icon">✓</span> Proof of existence at a specific timestamp</li>
+        <li><span class="ok-icon">✓</span> Private contracts between consenting parties</li>
+        <li><span class="ok-icon">✓</span> Software and code signing</li>
+        <li><span class="ok-icon">✓</span> Journalistic and research evidence</li>
+        <li><span class="ok-icon">✓</span> Internal corporate document workflows</li>
+        <li><span class="ok-icon">✓</span> Post-quantum resistant (RSA signatures are not)</li>
+      </ul>
+    </div>
+    <div class="legal-card warn">
+      <div class="legal-card-title">⚠ Not yet available</div>
+      <ul class="legal-list">
+        <li><span class="warn-icon">⚠</span> eIDAS Qualified Electronic Signature (QES)</li>
+        <li><span class="warn-icon">⚠</span> Italian CAD / AgID accredited signature</li>
+        <li><span class="warn-icon">⚠</span> Notarial acts and deeds</li>
+        <li><span class="warn-icon">⚠</span> Court filings requiring QES</li>
+        <li><span class="warn-icon">⚠</span> Real estate transactions</li>
+        <li><span class="warn-icon">⚠</span> ETSI CAdES/XAdES/PAdES profiles for ML-DSA<br>
+          <span style="font-size:.65rem;color:var(--text-dim)">(expected 2026–2027)</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="info-box" style="margin-top:1.2rem">
+    <strong>The road ahead:</strong> The EU eIDAS 2.0 regulation is in force. ETSI is actively
+    working on post-quantum algorithm profiles for AdES signatures.
+    ML-DSA is expected to be formally included in qualified signature standards by
+    <strong>2026–2027</strong> — at which point PQCServer certificates will be upgradeable
+    to full qualified status. Documents signed today will already have the cryptographic foundation.
+  </div>
+</section>
+
+<!-- CTA -->
+<section style="max-width:900px;margin:0 auto;padding:2rem 1.5rem 4rem">
+  <div class="card" style="padding:2.5rem;text-align:center">
+    <div style="font-family:var(--sans);font-weight:800;font-size:1.8rem;color:var(--bright);margin-bottom:.5rem">
+      Start signing today
+    </div>
+    <p style="font-size:.85rem;color:var(--text-mid);margin-bottom:1.5rem;max-width:460px;margin-left:auto;margin-right:auto;line-height:1.7">
+      Generate your ML-DSA keypair, sign your first document, and get a
+      verifiable cryptographic certificate — free, no account required.
+    </p>
+    <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
+      <a href="/sign.html" class="btn btn-primary" style="padding:12px 24px">✏️ Sign a document</a>
+      <a href="/keygen.html" class="btn btn-ghost" style="padding:12px 24px">🔑 Get ML-DSA keys first</a>
+      <a href="/verify.html" class="btn btn-ghost" style="padding:12px 24px">✔️ Verify a certificate</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <strong style="color:var(--text)">PQCServer</strong> — Cryptographic timestamping with ML-DSA (NIST FIPS-204)
+  <br><a href="/">Home</a> · <a href="/sign.html">Sign</a> · <a href="/verify.html">Verify</a> ·
+  <a href="/encrypt.html">Encrypt</a> · <a href="/keygen.html">Keys</a>
+  <br>Algorithm: <a href="https://csrc.nist.gov/pubs/fips/204/final" target="_blank">NIST FIPS-204 (ML-DSA)</a> ·
+  Zero-knowledge · No tracking · No cookies
+</footer>
+
+<script src="/assets/auth.js"></script>
+<script>PQC.initTopbar();</script>
+</body>
+</html>

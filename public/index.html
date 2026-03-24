@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PQCServer — Post-Quantum Encrypted Messaging, Vault & Document Notary</title>
+<meta name="description" content="PQCServer: send end-to-end encrypted messages, store files in a quantum-safe vault, and notarize documents with ML-DSA signatures. Zero-knowledge server. Free to use.">
+<meta name="keywords" content="post-quantum cryptography, ML-KEM, ML-DSA, encrypted messaging, quantum-safe storage, document notary, NIST FIPS-203, FIPS-204, zero-knowledge encryption">
+<meta name="author" content="PQCServer">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://pqcserver.com/">
+
+<!-- Open Graph -->
+<meta property="og:type"        content="website">
+<meta property="og:url"         content="https://pqcserver.com/">
+<meta property="og:title"       content="PQCServer — Post-Quantum Encrypted Messaging & Vault">
+<meta property="og:description" content="Send encrypted messages, store files and notarize documents using NIST 2024 post-quantum algorithms. Zero-knowledge. Free.">
+<meta property="og:site_name"   content="PQCServer">
+
+<!-- Twitter Card -->
+<meta name="twitter:card"        content="summary_large_image">
+<meta name="twitter:title"       content="PQCServer — Post-Quantum Encryption">
+<meta name="twitter:description" content="Quantum-safe messaging, file vault and document notary. ML-KEM + ML-DSA. Zero-knowledge. Free.">
+
+<!-- Schema.org -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "PQCServer",
+  "url": "https://pqcserver.com",
+  "description": "Post-quantum encrypted messaging, zero-knowledge file vault and quantum-safe document notary service",
+  "applicationCategory": "SecurityApplication",
+  "operatingSystem": "Web",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+  "featureList": [
+    "Post-quantum message encryption (ML-KEM FIPS-203)",
+    "Zero-knowledge file vault with GridFS",
+    "Document notarization with ML-DSA (FIPS-204)",
+    "Embeddable widget for third-party sites",
+    "Burn-after-read shortlinks"
+  ]
+}
+</script>
+
+<link rel="stylesheet" href="/assets/style.css">
+<style>
+/* ── HERO ── */
+.hero {
+  min-height: 100vh;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 80px 1.5rem 3rem;
+  max-width: 960px; margin: 0 auto;
+  position: relative; z-index: 1;
+}
+.hero-eyebrow {
+  font-size: .62rem; letter-spacing: 2.5px; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 1.5rem;
+  display: flex; align-items: center; gap: 10px;
+}
+.hero-eyebrow::before { content:''; display:inline-block; width:18px; height:1px; background:var(--accent); }
+h1 {
+  font-family: var(--sans); font-weight: 800;
+  font-size: clamp(2.2rem, 5.5vw, 3.8rem);
+  color: var(--bright); line-height: 1.08;
+  letter-spacing: -1px; margin-bottom: 1.2rem;
+}
+h1 em { font-style: italic; color: var(--text-mid); }
+h1 .hl { color: var(--accent); }
+.hero-desc {
+  font-size: .92rem; color: var(--text-mid);
+  max-width: 560px; line-height: 1.8; margin-bottom: 2.5rem;
+}
+.hero-btns { display: flex; gap: 1rem; flex-wrap: wrap; }
+.hero-btns .btn { padding: 12px 24px; font-size: .82rem; }
+
+/* ── TICKER ── */
+.ticker-wrap {
+  border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+  background: var(--surface); overflow: hidden; padding: 9px 0;
+}
+.ticker { display: flex; animation: ticker 35s linear infinite; width: max-content; }
+.ticker-item {
+  font-size: .6rem; letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--text-dim); padding: 0 2.5rem; white-space: nowrap;
+  display: flex; align-items: center; gap: 2rem;
+}
+.ticker-item span { color: var(--accent); }
+@keyframes ticker { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+
+/* ── SERVICES GRID ── */
+.services {
+  max-width: 960px; margin: 0 auto; padding: 4rem 1.5rem;
+}
+.services-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 1px; background: var(--border);
+  border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+}
+.service-card {
+  background: var(--surface); padding: 2rem 1.8rem;
+  display: flex; flex-direction: column;
+  transition: background .2s;
+}
+.service-card:hover { background: var(--surface2); }
+.service-icon { font-size: 2rem; margin-bottom: 1rem; }
+.service-name {
+  font-family: var(--sans); font-weight: 800;
+  font-size: 1.1rem; color: var(--bright); margin-bottom: .5rem;
+}
+.service-desc {
+  font-size: .78rem; color: var(--text-mid);
+  line-height: 1.7; flex: 1; margin-bottom: 1.2rem;
+}
+.service-link {
+  font-size: .72rem; color: var(--accent);
+  text-decoration: none; display: flex; align-items: center; gap: 6px;
+  transition: gap .2s;
+}
+.service-link:hover { gap: 10px; }
+
+/* ── HOW IT WORKS ── */
+.section { max-width: 960px; margin: 0 auto; padding: 3rem 1.5rem; }
+
+.steps-row {
+  display: flex; align-items: flex-start; gap: 0;
+  margin-top: 2rem; overflow-x: auto;
+}
+.step {
+  flex: 1; min-width: 140px; text-align: center; padding: 0 1rem;
+  position: relative;
+}
+.step:not(:last-child)::after {
+  content: "→"; position: absolute; right: -10px; top: 22px;
+  color: var(--text-dim); font-size: .9rem;
+}
+.step-num {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: rgba(0,212,255,.08); border: 1px solid rgba(0,212,255,.25);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--sans); font-weight: 800; font-size: .9rem;
+  color: var(--accent); margin: 0 auto .8rem;
+}
+.step-title { font-size: .78rem; color: var(--bright); margin-bottom: .3rem; }
+.step-body  { font-size: .68rem; color: var(--text-dim); line-height: 1.6; }
+
+/* ── FEATURES ── */
+.features-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem;
+  margin-top: 1.5rem;
+}
+.feat {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 1.4rem;
+  transition: border-color .2s;
+}
+.feat:hover { border-color: rgba(0,212,255,.2); }
+.feat-icon  { font-size: 1.3rem; margin-bottom: .6rem; }
+.feat-title { font-family: var(--sans); font-weight: 700; font-size: .9rem; color: var(--bright); margin-bottom: .4rem; }
+.feat-body  { font-size: .73rem; color: var(--text-mid); line-height: 1.6; }
+
+/* ── TECH BAND ── */
+.tech-band {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 2rem 1.5rem;
+}
+.tech-inner {
+  max-width: 960px; margin: 0 auto;
+  display: flex; align-items: center; gap: 2rem; flex-wrap: wrap;
+  justify-content: center;
+}
+.tech-item {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: .8rem 1.2rem;
+}
+.tech-name {
+  font-family: var(--sans); font-weight: 700;
+  font-size: .82rem; color: var(--bright);
+}
+.tech-sub { font-size: .62rem; color: var(--text-dim); letter-spacing: .5px; }
+
+/* ── CTA ── */
+.cta-section {
+  max-width: 960px; margin: 2rem auto 4rem; padding: 0 1.5rem;
+}
+.cta-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 3rem; text-align: center;
+}
+.cta-title {
+  font-family: var(--sans); font-weight: 800;
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  color: var(--bright); margin-bottom: .5rem;
+}
+.cta-sub { font-size: .85rem; color: var(--text-mid); margin-bottom: 2rem; }
+
+@media(max-width:700px) {
+  .services-grid, .features-grid { grid-template-columns: 1fr; }
+  .steps-row { flex-direction: column; gap: 1rem; }
+  .step::after { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="/" class="topbar-logo"><div class="logo-pulse"></div>PQCServer</a>
+  <nav class="topbar-nav" id="topbar-nav">
+    <a href="/features/messaging.html" class="hide-mobile">Messaging</a>
+    <a href="/features/vault.html"     class="hide-mobile">Vault</a>
+    <a href="/notary.html"             class="hide-mobile" style="color:#a78bfa">Notary</a>
+    <a href="/register.html" class="btn-nav">Get started free</a>
+  </nav>
+</div>
+
+<!-- ── HERO ── -->
+<div class="hero">
+  <div class="hero-eyebrow">NIST FIPS-203 &middot; FIPS-204 &middot; Post-Quantum Cryptography</div>
+  <h1>
+    Encrypt. Store. Sign.<br>
+    <em>Safe from</em><br>
+    <span class="hl">quantum computers.</span>
+  </h1>
+  <p class="hero-desc">
+    PQCServer is a zero-knowledge platform for post-quantum encrypted messaging,
+    secure file storage and quantum-safe document notarization.
+    Built on NIST 2024 standards. Everything runs in your browser — the server
+    never sees your keys or your content.
+  </p>
+  <div class="hero-btns">
+    <a href="/register.html" class="btn btn-primary">Get started free →</a>
+    <a href="/encrypt.html"  class="btn btn-ghost">🔒 Encrypt a message</a>
+    <a href="/keygen.html"   class="btn btn-ghost">🔑 Generate keys</a>
+  </div>
+</div>
+
+<!-- ── TICKER ── -->
+<div class="ticker-wrap" aria-hidden="true">
+  <div class="ticker">
+    <div class="ticker-item">
+      ML-KEM <span>FIPS-203</span> &nbsp;&middot;&nbsp;
+      ML-DSA <span>FIPS-204</span> &nbsp;&middot;&nbsp;
+      AES-256-GCM <span>HYBRID</span> &nbsp;&middot;&nbsp;
+      Zero-Knowledge <span>SERVER</span> &nbsp;&middot;&nbsp;
+      GridFS <span>CHUNKED UPLOAD</span> &nbsp;&middot;&nbsp;
+      Burn After Read <span>SHORTLINKS</span> &nbsp;&middot;&nbsp;
+      Notary <span>RECEIPTS</span> &nbsp;&middot;&nbsp;
+      Widget <span>EMBEDDABLE</span> &nbsp;&middot;&nbsp;
+    </div>
+    <div class="ticker-item">
+      ML-KEM <span>FIPS-203</span> &nbsp;&middot;&nbsp;
+      ML-DSA <span>FIPS-204</span> &nbsp;&middot;&nbsp;
+      AES-256-GCM <span>HYBRID</span> &nbsp;&middot;&nbsp;
+      Zero-Knowledge <span>SERVER</span> &nbsp;&middot;&nbsp;
+      GridFS <span>CHUNKED UPLOAD</span> &nbsp;&middot;&nbsp;
+      Burn After Read <span>SHORTLINKS</span> &nbsp;&middot;&nbsp;
+      Notary <span>RECEIPTS</span> &nbsp;&middot;&nbsp;
+      Widget <span>EMBEDDABLE</span> &nbsp;&middot;&nbsp;
+    </div>
+  </div>
+</div>
+
+<!-- ── THREE SERVICES ── -->
+<section class="services" id="services">
+  <div class="step-label">What PQCServer does</div>
+  <div class="page-title" style="margin-bottom:1.5rem">Three services.<br><em>One quantum-safe platform.</em></div>
+
+  <div class="services-grid">
+
+    <div class="service-card">
+      <div class="service-icon">🔒</div>
+      <div class="service-name">Encrypted Messaging</div>
+      <p class="service-desc">
+        Send text messages and files encrypted with ML-KEM + AES-256-GCM.
+        Share via a simple shortlink. The recipient decrypts in their browser
+        — no app, no account required to receive.
+        Enable burn-after-read for self-destructing messages.
+      </p>
+      <a href="/features/messaging.html" class="service-link">Learn more <span>→</span></a>
+    </div>
+
+    <div class="service-card">
+      <div class="service-icon">📁</div>
+      <div class="service-name">Quantum-Safe Vault</div>
+      <p class="service-desc">
+        Store encrypted files permanently in your personal vault.
+        No size limits — files are split into chunks and stored in MongoDB GridFS.
+        Share files with specific users or generate shareable shortlinks.
+        Your files are encrypted before they leave your browser.
+      </p>
+      <a href="/features/vault.html" class="service-link">Learn more <span>→</span></a>
+    </div>
+
+    <div class="service-card">
+      <div class="service-icon">📜</div>
+      <div class="service-name">Document Notary</div>
+      <p class="service-desc">
+        Prove a document existed at a specific moment in time.
+        Sign with your ML-DSA key, get a server-countersigned Notary Receipt
+        with cryptographic timestamp. Anyone can verify authenticity
+        without downloading any software.
+      </p>
+      <a href="/notary.html" class="service-link">Learn more <span>→</span></a>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── HOW IT WORKS ── -->
+<section class="section" id="how">
+  <div class="step-label">How it works</div>
+  <div class="page-title" style="margin-bottom:.5rem">Send a message in 4 steps</div>
+  <p class="page-sub">No installation. No plugins. Just a browser.</p>
+
+  <div class="steps-row">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-title">Generate keys</div>
+      <div class="step-body">ML-KEM + ML-DSA keypair generated in your browser. Private key downloaded locally.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-title">Encrypt</div>
+      <div class="step-body">Type message, attach file. Encryption runs in the browser — only ciphertext reaches our server.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-title">Share shortlink</div>
+      <div class="step-body">Paste <code style="color:var(--accent);font-size:.65rem">pqcserver.com/m/xxx</code> anywhere — email, chat, SMS.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-title">Recipient decrypts</div>
+      <div class="step-body">Opens link, pastes private key, message decrypts locally. Server never sees plaintext.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FEATURES ── -->
+<section class="section" id="features">
+  <div class="step-label">Features</div>
+  <div class="page-title" style="margin-bottom:1.5rem">Built for privacy by design</div>
+
+  <div class="features-grid">
+    <div class="feat">
+      <div class="feat-icon">🛡️</div>
+      <div class="feat-title">Zero-Knowledge Server</div>
+      <p class="feat-body">All cryptographic operations happen in your browser. The server stores only ciphertext it mathematically cannot decrypt. By design, not policy.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">⚛️</div>
+      <div class="feat-title">NIST 2024 Standards</div>
+      <p class="feat-body">ML-KEM (FIPS-203) for encryption and ML-DSA (FIPS-204) for signatures — the same algorithms adopted by Google, Cloudflare and the US federal government.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">🔗</div>
+      <div class="feat-title">Universal Shortlinks</div>
+      <p class="feat-body">Every message gets a shortlink. Paste it in Gmail, WhatsApp, Slack, SMS. Recipients need no account to decrypt — just their private key.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">🔥</div>
+      <div class="feat-title">Burn After Read</div>
+      <p class="feat-body">Messages are permanently deleted the moment the recipient opens them. Nothing lingers on our servers beyond what you allow.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">📦</div>
+      <div class="feat-title">No File Size Limits</div>
+      <p class="feat-body">Files are split into 3MB encrypted chunks and stored in MongoDB GridFS. Upload gigabytes — no single request ever approaches Cloudflare limits.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">🔌</div>
+      <div class="feat-title">Embeddable Widget</div>
+      <p class="feat-body">Add one line of code to any website. Opens an inline modal with the full encryption flow — no redirect, no new tab. Perfect for onionmail.org and similar privacy services.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">📜</div>
+      <div class="feat-title">Quantum-Safe Notary</div>
+      <p class="feat-body">Document hash + ML-DSA signature + server timestamp = a Notary Receipt. The document never leaves your browser. Anyone can verify authenticity with the receipt ID.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">👤</div>
+      <div class="feat-title">Public Profiles</div>
+      <p class="feat-body">Register a username. Share <code style="color:var(--accent);font-size:.68rem">pqcserver.com/u/you</code> — anyone can send you encrypted messages without knowing your key.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">🌐</div>
+      <div class="feat-title">REST API</div>
+      <p class="feat-body">Integrate PQCServer into your own applications. Upload files, send messages and verify notary receipts programmatically without building the cryptography yourself.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── TECH BAND ── -->
+<div class="tech-band">
+  <div class="tech-inner">
+    <div class="tech-item">
+      <div class="tech-name">ML-KEM</div>
+      <div class="tech-sub">NIST FIPS-203 · Encryption</div>
+    </div>
+    <div style="color:var(--border)">+</div>
+    <div class="tech-item">
+      <div class="tech-name">AES-256-GCM</div>
+      <div class="tech-sub">Symmetric · Web Crypto API</div>
+    </div>
+    <div style="color:var(--border)">+</div>
+    <div class="tech-item">
+      <div class="tech-name">ML-DSA</div>
+      <div class="tech-sub">NIST FIPS-204 · Signatures</div>
+    </div>
+    <div style="color:var(--border)">=</div>
+    <div class="tech-item" style="border:1px solid rgba(0,212,255,.2);border-radius:6px;background:rgba(0,212,255,.04)">
+      <div class="tech-name" style="color:var(--accent)">Quantum-Safe</div>
+      <div class="tech-sub">End-to-End Encryption</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── HARVEST NOW WARNING ── -->
+<section class="section">
+  <div class="card" style="border-color:rgba(255,165,2,.2);background:rgba(255,165,2,.03)">
+    <div class="card-body" style="padding:2rem">
+      <div style="display:flex;gap:1.5rem;align-items:flex-start;flex-wrap:wrap">
+        <div style="font-size:2.5rem;flex-shrink:0">⚠️</div>
+        <div>
+          <div style="font-family:var(--sans);font-weight:800;font-size:1.1rem;color:var(--warn);margin-bottom:.5rem">
+            The threat is happening now — not in the future
+          </div>
+          <p style="font-size:.82rem;color:var(--text-mid);line-height:1.7;max-width:640px">
+            State actors are intercepting and storing encrypted communications today, waiting for quantum computers powerful enough to decrypt them.
+            This attack — called <strong style="color:var(--text)">"Harvest Now, Decrypt Later"</strong> — means data encrypted with RSA or ECC right now is already at risk.
+            PQCServer uses ML-KEM and ML-DSA — NIST-standardized algorithms designed to resist both classical and quantum computers.
+          </p>
+          <div class="btn-row" style="margin-top:1rem">
+            <a href="/features/messaging.html" class="btn btn-warn" style="background:rgba(255,165,2,.1);border:1px solid rgba(255,165,2,.3);color:var(--warn)">
+              Why migrate now →
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ── -->
+<div class="cta-section">
+  <div class="cta-card">
+    <div class="cta-title">Start encrypting with post-quantum security</div>
+    <p class="cta-sub">Free. No credit card. Ready in 60 seconds. Your keys never leave your browser.</p>
+    <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
+      <a href="/register.html" class="btn btn-primary">Create free account →</a>
+      <a href="/keygen.html"   class="btn btn-ghost">Generate keys without account</a>
+      <a href="/encrypt.html"  class="btn btn-ghost">🔒 Try encryption now</a>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <strong style="color:var(--text)">PQCServer</strong> &mdash; Post-Quantum Encrypted Messaging, Vault &amp; Notary
+  <br>
+  <a href="/features/messaging.html">Messaging</a> &nbsp;&middot;&nbsp;
+  <a href="/features/vault.html">Vault</a> &nbsp;&middot;&nbsp;
+  <a href="/notary.html">Notary</a> &nbsp;&middot;&nbsp;
+  <a href="/about.html">About</a> &nbsp;&middot;&nbsp;
+  <a href="/register.html">Register</a> &nbsp;&middot;&nbsp;
+  <a href="/login.html">Log in</a>
+  <br>
+  <a href="https://csrc.nist.gov/pubs/fips/203/final" target="_blank" rel="noopener">NIST FIPS-203</a> &nbsp;&middot;&nbsp;
+  <a href="https://csrc.nist.gov/pubs/fips/204/final" target="_blank" rel="noopener">NIST FIPS-204</a> &nbsp;&middot;&nbsp;
+  <a href="https://postquantum.tools" target="_blank" rel="noopener">PostQuantum.Tools</a> &nbsp;&middot;&nbsp;
+  <a href="https://pqctoolkit.com" target="_blank" rel="noopener">PQCToolkit</a>
+  <br>Zero-knowledge &middot; No tracking &middot; No cookies &middot; Free
+</footer>
+
+<script src="/assets/auth.js"></script>
+<script>PQC.initTopbar();</script>
+</body>
+</html>

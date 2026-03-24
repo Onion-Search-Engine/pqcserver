@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PQCServer &mdash; Generate Keys</title>
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+<div class="topbar">
+  <a href="/" class="topbar-logo"><div class="logo-pulse"></div>PQCServer</a>
+  <nav class="topbar-nav" id="topbar-nav"></nav>
+</div>
+
+<div class="page">
+  <div class="step-label" id="page-step-label">Keys</div>
+  <div class="page-title" id="page-title">Generate your keypair</div>
+  <p class="page-sub" id="page-sub">
+    Your browser generates two post-quantum keypairs locally.
+    Private keys never leave this page. Public keys are saved to PQCServer.
+  </p>
+
+  <div class="info-box">
+    <strong>ML-KEM</strong> (FIPS-203) &mdash; others use it to encrypt messages <em>for you</em> &nbsp;|&nbsp;
+    <strong>ML-DSA</strong> (FIPS-204) &mdash; you use it to <em>sign</em> messages you send
+  </div>
+
+  <!-- NOT LOGGED IN WARNING -->
+  <div id="not-logged-in" style="display:none">
+    <div class="info-box warn">
+      <strong>&#9888; You are not logged in.</strong>
+      You can generate keys without an account, but to save your public key on PQCServer
+      and get a profile URL you need to <a href="/register.html" style="color:var(--accent)">register</a>
+      or <a href="/login.html" style="color:var(--accent)">log in</a> first.
+    </div>
+  </div>
+
+  <!-- KEY OPTIONS -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-head"><span class="accent">ML-KEM</span> &mdash; Encryption Keys <span class="tag">FIPS-203</span></div>
+      <div class="card-body">
+        <div class="form-group">
+          <label>Security Level</label>
+          <select id="kem-variant">
+            <option value="ml_kem512">ML-KEM-512 (128-bit)</option>
+            <option value="ml_kem768" selected>ML-KEM-768 (192-bit) &#9733; Recommended</option>
+            <option value="ml_kem1024">ML-KEM-1024 (256-bit)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Public Key <span style="color:var(--text-dim)">(share freely)</span></label>
+          <div class="output-block">
+            <textarea id="kem-pub" readonly placeholder="&mdash; generated here &mdash;" rows="3"></textarea>
+            <button class="copy-btn" onclick="copyField('kem-pub')">copy</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Private Key <span style="color:var(--red)">&#9888; Keep secret</span></label>
+          <div class="output-block">
+            <textarea id="kem-sec" readonly placeholder="&mdash; generated here &mdash;" rows="3"></textarea>
+            <button class="copy-btn" onclick="copyField('kem-sec')">copy</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="accent">ML-DSA</span> &mdash; Signature Keys <span class="tag">FIPS-204</span></div>
+      <div class="card-body">
+        <div class="form-group">
+          <label>Security Level</label>
+          <select id="dsa-variant">
+            <option value="ml_dsa44">ML-DSA-44 (128-bit)</option>
+            <option value="ml_dsa65" selected>ML-DSA-65 (192-bit) &#9733; Recommended</option>
+            <option value="ml_dsa87">ML-DSA-87 (256-bit)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Public Key <span style="color:var(--text-dim)">(share freely)</span></label>
+          <div class="output-block">
+            <textarea id="dsa-pub" readonly placeholder="&mdash; generated here &mdash;" rows="3"></textarea>
+            <button class="copy-btn" onclick="copyField('dsa-pub')">copy</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Private Key <span style="color:var(--red)">&#9888; Keep secret</span></label>
+          <div class="output-block">
+            <textarea id="dsa-sec" readonly placeholder="&mdash; generated here &mdash;" rows="3"></textarea>
+            <button class="copy-btn" onclick="copyField('dsa-sec')">copy</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACTIONS -->
+  <div class="card">
+    <div class="card-body">
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="generateKeys()" id="gen-btn">&#9889; Generate Keypairs</button>
+        <button class="btn btn-success" onclick="downloadKeys()" id="dl-btn" disabled>&#128190; Download Private Keys (.txt)</button>
+        <button class="btn btn-ghost" onclick="saveKeys()" id="save-btn" disabled id="save-btn">&#9729;&#65039; Save Public Keys to Profile</button>
+      </div>
+      <div id="gen-status"></div>
+      <div id="save-status"></div>
+      <div class="info-box warn" style="margin-top:1rem" id="dl-warning" style="display:none">
+        <strong>&#9888; Important:</strong> Download your private keys before leaving this page.
+        They cannot be recovered if lost. Store them in a password manager or encrypted file.
+      </div>
+    </div>
+  </div>
+
+  <!-- SUCCESS -->
+  <div id="success-card" style="display:none">
+    <div class="card" style="border-color:rgba(0,229,160,.3)">
+      <div class="card-head" style="color:var(--green)">&#10003; Keys saved &mdash; your profile is live</div>
+      <div class="card-body">
+        <div class="form-group">
+          <label>Your public profile URL</label>
+          <div class="output-block">
+            <textarea id="profile-url" readonly rows="1"></textarea>
+            <button class="copy-btn" onclick="copyField('profile-url')">copy</button>
+          </div>
+        </div>
+        <p style="font-size:.75rem;color:var(--text-mid);margin-top:.6rem;line-height:1.6">
+          Share this URL so others can send you encrypted messages without needing to know your key in advance.
+        </p>
+        <div class="btn-row">
+          <a href="/encrypt.html" class="btn btn-primary">&#128274; Encrypt a message &rarr;</a>
+          <a href="/dashboard.html" class="btn btn-ghost">Dashboard</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <strong style="color:var(--text)">PQCServer</strong> &mdash; All key generation happens in your browser. Private keys are never transmitted.
+  <br><a href="/">Home</a> &middot; <a href="/encrypt.html">Encrypt</a> &middot;
+  <a href="https://csrc.nist.gov/pubs/fips/203/final" target="_blank">NIST FIPS-203</a> &middot;
+  <a href="https://csrc.nist.gov/pubs/fips/204/final" target="_blank">FIPS-204</a>
+</footer>
+
+<script src="/assets/auth.js"></script>
+<script type="module">
+let ml_kem, ml_dsa;
+let kemKeys = null, dsaKeys = null;
+let currentUser = null;
+
+// Init: check session, render nav
+const session = await PQC.initTopbar();
+currentUser = session ? session.user : null;
+if (!currentUser) document.getElementById("not-logged-in").style.display = "block";
+document.getElementById("save-btn").title = currentUser ? "" : "Log in to save your keys";
+
+// Load crypto
+async function loadPQC() {
+  try { const m=await import("https://esm.sh/pqc@1.0.13"); ml_kem=m.ml_kem; ml_dsa=m.ml_dsa; }
+  catch(e) { try { const m=await import("https://esm.run/pqc@1.0.13"); ml_kem=m.ml_kem; ml_dsa=m.ml_dsa; } catch(e2){} }
+}
+await loadPQC();
+
+function toB64(b){let s="";for(let i=0;i<b.length;i++)s+=String.fromCharCode(b[i]);return btoa(s);}
+function setStatus(id,type,msg){const e=document.getElementById(id);if(e)e.innerHTML=`<div class="status status-${type}">${msg}</div>`;}
+
+window.generateKeys = async function() {
+  if (!ml_kem||!ml_dsa){ setStatus("gen-status","fail","&#9888; Crypto library not loaded. Refresh the page."); return; }
+  setStatus("gen-status","info","<span class=\"spinner\"></span> Generating keypairs\u2026");
+  await new Promise(r=>setTimeout(r,30));
+  try {
+    kemKeys = ml_kem[document.getElementById("kem-variant").value].keygen();
+    dsaKeys = ml_dsa[document.getElementById("dsa-variant").value].keygen();
+    document.getElementById("kem-pub").value = toB64(kemKeys.publicKey);
+    document.getElementById("kem-sec").value = toB64(kemKeys.secretKey);
+    document.getElementById("dsa-pub").value = toB64(dsaKeys.publicKey);
+    document.getElementById("dsa-sec").value = toB64(dsaKeys.secretKey);
+    document.getElementById("dl-btn").disabled  = false;
+    document.getElementById("save-btn").disabled = !currentUser;
+    document.getElementById("dl-warning").style.display = "block";
+    setStatus("gen-status","ok","\u2713 Keypairs generated. Download your private keys now!");
+  } catch(e) { setStatus("gen-status","fail","\u2717 Error: "+e.message); }
+};
+
+window.downloadKeys = function() {
+  if (!kemKeys||!dsaKeys) return;
+  const u = currentUser ? currentUser.username : "myaccount";
+  const txt = [
+    "=== PQCServer Private Keys ===",
+    "Generated: "+new Date().toISOString(),
+    "Username: "+u,
+    "WARNING: Keep these keys secret. Never share them.",
+    "",
+    "--- ML-KEM Private Key (for decryption) ---",
+    document.getElementById("kem-sec").value,
+    "",
+    "--- ML-DSA Private Key (for signing) ---",
+    document.getElementById("dsa-sec").value,
+    "",
+    "--- ML-KEM Public Key (share this) ---",
+    document.getElementById("kem-pub").value,
+    "",
+    "--- ML-DSA Public Key (share this) ---",
+    document.getElementById("dsa-pub").value,
+    "",
+    "Your profile: https://pqcserver.com/u/"+u,
+    "Algorithms: ML-KEM (NIST FIPS-203) + ML-DSA (NIST FIPS-204)",
+  ].join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([txt],{type:"text/plain"}));
+  a.download = "pqcserver-keys-"+u+".txt";
+  a.click();
+};
+
+window.saveKeys = async function() {
+  if (!kemKeys||!dsaKeys){ setStatus("save-status","fail","Generate keys first"); return; }
+  if (!currentUser){ setStatus("save-status","warn","&#9888; <a href=\"/login.html\" style=\"color:var(--accent)\">Log in</a> to save your public keys."); return; }
+  setStatus("save-status","info","<span class=\"spinner\"></span> Saving to profile\u2026");
+  try {
+    const d = await (await fetch("/api/update_keys.php",{method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        public_key_kem: document.getElementById("kem-pub").value,
+        public_key_dsa: document.getElementById("dsa-pub").value,
+      })})).json();
+    if (d.ok) {
+      setStatus("save-status","ok","\u2713 Keys saved to your profile");
+      document.getElementById("profile-url").value = d.profile;
+      document.getElementById("success-card").style.display = "block";
+      document.getElementById("success-card").scrollIntoView({behavior:"smooth",block:"center"});
+    } else if (d.redirect) {
+      window.location.href = "/login.html?next=/keygen.html";
+    } else {
+      setStatus("save-status","fail","\u2717 "+d.error);
+    }
+  } catch(e) { setStatus("save-status","fail","\u2717 Network error."); }
+};
+
+window.copyField = function(id) {
+  const el=document.getElementById(id); if(!el) return;
+  navigator.clipboard.writeText(el.value).then(()=>{
+    const btn=el.closest(".output-block")?.querySelector(".copy-btn");
+    if(btn){btn.textContent="copied!";setTimeout(()=>btn.textContent="copy",1500);}
+  });
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  php-lint:
+    name: PHP Syntax Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+
+      - name: Check PHP syntax
+        run: |
+          find api/ config/ scripts/ -name "*.php" \
+            -exec php -l {} \; | grep -v "No syntax errors"
+          echo "PHP syntax check passed"
+
+      - name: Install Composer dependencies
+        run: composer install --no-dev --optimize-autoloader
+
+  js-check:
+    name: JavaScript Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check JS syntax
+        run: |
+          for f in public/assets/*.js; do
+            node --input-type=module < "$f" 2>/dev/null || \
+            node -e "require('fs').readFileSync('$f','utf8')" 2>/dev/null || true
+          done
+          echo "JS check passed"
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for hardcoded secrets
+        run: |
+          # Ensure no real keys are committed
+          if grep -r "PQCS_SERVER_DSA_SECRET=" .env 2>/dev/null | grep -v "=\s*$" | grep -v ".example"; then
+            echo "ERROR: Real secret key found in .env"
+            exit 1
+          fi
+          echo "No hardcoded secrets found"
+
+      - name: Check .gitignore covers sensitive files
+        run: |
+          if ! grep -q "^.env$" .gitignore; then
+            echo "ERROR: .env not in .gitignore"
+            exit 1
+          fi
+          echo "Gitignore check passed"

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Post-Quantum Encrypted Messaging — PQCServer</title>
+<meta name="description" content="Send end-to-end encrypted messages and files using ML-KEM (NIST FIPS-203). Zero-knowledge server. Share via shortlink. Works in any email or chat. Free.">
+<meta name="keywords" content="post-quantum encrypted messaging, ML-KEM encryption, quantum safe email, encrypted shortlink, zero knowledge messaging, NIST FIPS-203">
+<link rel="stylesheet" href="/assets/style.css">
+<script>
+window.PQC_PAGE = {
+  title: 'Post-Quantum Encrypted Messaging — PQCServer',
+  description: 'Send end-to-end encrypted messages and files using ML-KEM (NIST FIPS-203). Zero-knowledge server. Share via shortlink. Works in any email or chat.',
+  image: '/assets/og-messaging.png',
+};
+</script>
+<script src="/assets/seo.js" defer></script>
+<style>
+.hero { max-width:960px;margin:0 auto;padding:100px 1.5rem 4rem;position:relative;z-index:1; }
+.eyebrow { font-size:.62rem;letter-spacing:2.5px;text-transform:uppercase;color:var(--accent);margin-bottom:1.2rem;display:flex;align-items:center;gap:10px; }
+.eyebrow::before { content:'';width:20px;height:1px;background:var(--accent); }
+.hero h1 { font-family:var(--sans);font-weight:800;font-size:clamp(2rem,5vw,3.5rem);color:var(--bright);line-height:1.05;letter-spacing:-1px;margin-bottom:1rem; }
+.hero h1 em { font-style:italic;color:var(--text-mid); }
+.hero-desc { font-size:.88rem;color:var(--text-mid);max-width:540px;line-height:1.8;margin-bottom:2rem; }
+.section { max-width:960px;margin:0 auto;padding:3rem 1.5rem;position:relative;z-index:1; }
+.section h2 { font-family:var(--sans);font-weight:800;font-size:clamp(1.4rem,3vw,2rem);color:var(--bright);margin-bottom:.5rem; }
+.section-sub { font-size:.8rem;color:var(--text-mid);line-height:1.7;margin-bottom:1.8rem;max-width:520px; }
+
+/* Flow diagram */
+.flow { display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;margin-bottom:2rem; }
+.flow-node { background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:.8rem 1rem;font-size:.72rem; }
+.flow-node strong { color:var(--bright);display:block;margin-bottom:2px; }
+.flow-node span { color:var(--text-dim); }
+.flow-arrow { color:var(--text-dim);font-size:.8rem; }
+
+/* Comparison table */
+.compare-table { width:100%;border-collapse:collapse;font-size:.75rem; }
+.compare-table th { font-size:.62rem;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);text-align:left;padding:.6rem 1rem .6rem 0;border-bottom:1px solid var(--border); }
+.compare-table td { padding:.8rem 1rem .8rem 0;border-bottom:1px solid rgba(255,255,255,.04);color:var(--text-mid);vertical-align:top;line-height:1.5; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table td:first-child { color:var(--text-dim);font-size:.7rem;width:140px; }
+.c-ok  { color:#00e5a0 !important; }
+.c-bad { color:#ff4757 !important; }
+
+/* Code embed */
+.code-block { background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:1rem 1.2rem;font-size:.72rem;color:var(--accent);line-height:1.8;overflow-x:auto; }
+
+.grid-2 { display:grid;grid-template-columns:1fr 1fr;gap:1.2rem; }
+@media(max-width:640px){ .grid-2{grid-template-columns:1fr;} .flow{flex-direction:column;align-items:flex-start;} }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="/" class="topbar-logo"><div class="logo-pulse"></div>PQCServer</a>
+  <nav class="topbar-nav" id="topbar-nav"></nav>
+</div>
+
+<div class="hero">
+  <div class="eyebrow">Post-Quantum Messaging · ML-KEM · NIST FIPS-203</div>
+  <h1>Encrypted messages<br><em>quantum computers</em><br>cannot read</h1>
+  <p class="hero-desc">
+    Send text and files with ML-KEM + AES-256-GCM encryption — directly in your browser.
+    Get a shortlink. Paste it anywhere. The server never sees your content.
+  </p>
+  <div style="display:flex;gap:1rem;flex-wrap:wrap">
+    <a href="/encrypt.html" class="btn btn-primary">🔒 Encrypt a message now</a>
+    <a href="/register.html" class="btn btn-ghost">Create free account →</a>
+  </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<section class="section">
+  <div class="eyebrow">How it works</div>
+  <h2>Three steps. No installation.</h2>
+  <p class="section-sub">Everything happens in your browser. The server only stores encrypted data it cannot read.</p>
+
+  <div class="flow">
+    <div class="flow-node"><strong>🔑 Get keys</strong><span>Generate ML-KEM keypair</span></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node"><strong>✍️ Write</strong><span>Text or file attachment</span></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node"><strong>🔒 Encrypt</strong><span>ML-KEM + AES-256-GCM in browser</span></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node"><strong>🔗 Share</strong><span>pqcserver.com/m/xxx</span></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node"><strong>🔓 Decrypt</strong><span>Recipient's browser only</span></div>
+  </div>
+
+  <div class="grid-2">
+    <div>
+      <div class="card" style="margin-bottom:1rem">
+        <div class="card-head"><span class="accent">Sender</span></div>
+        <div class="card-body stack" style="font-size:.78rem;color:var(--text-mid);gap:.6rem">
+          <div>1. Visit <strong style="color:var(--bright)">/encrypt.html</strong> — no login required</div>
+          <div>2. Enter the recipient's username or paste their ML-KEM public key</div>
+          <div>3. Type your message and optionally attach a file</div>
+          <div>4. Click Encrypt — everything happens in the browser</div>
+          <div>5. Copy the shortlink and paste it wherever you want</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <div class="card-head"><span class="accent">Recipient</span></div>
+        <div class="card-body stack" style="font-size:.78rem;color:var(--text-mid);gap:.6rem">
+          <div>1. Click the shortlink received via email, chat or SMS</div>
+          <div>2. The page loads the encrypted data from the server</div>
+          <div>3. Paste your ML-KEM <strong style="color:var(--bright)">private key</strong> in the field shown</div>
+          <div>4. Decryption happens in the browser — server sees nothing</div>
+          <div>5. Read message and download file (if any)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="section">
+  <div class="eyebrow">Features</div>
+  <h2>Everything you need</h2>
+  <div class="grid-2" style="margin-top:1rem">
+    <div class="card" style="padding:1.4rem">
+      <div style="font-size:1.3rem;margin-bottom:.6rem">🔥</div>
+      <div style="font-family:var(--sans);font-weight:700;color:var(--bright);margin-bottom:.4rem">Burn After Read</div>
+      <p style="font-size:.75rem;color:var(--text-mid);line-height:1.7">Enable burn-after-read to have the message permanently deleted from our server the moment the recipient opens it. Combined with TTL, messages never linger.</p>
+    </div>
+    <div class="card" style="padding:1.4rem">
+      <div style="font-size:1.3rem;margin-bottom:.6rem">📎</div>
+      <div style="font-family:var(--sans);font-weight:700;color:var(--bright);margin-bottom:.4rem">File Attachments — Any Size</div>
+      <p style="font-size:.75rem;color:var(--text-mid);line-height:1.7">Attach files of any size using GridFS chunked upload. Files are encrypted in the browser before upload. 3MB chunks — well under Cloudflare's 100MB per-request limit.</p>
+    </div>
+    <div class="card" style="padding:1.4rem">
+      <div style="font-size:1.3rem;margin-bottom:.6rem">👤</div>
+      <div style="font-family:var(--sans);font-weight:700;color:var(--bright);margin-bottom:.4rem">Public Profiles</div>
+      <p style="font-size:.75rem;color:var(--text-mid);line-height:1.7">Register a username and share <strong style="color:var(--accent)">pqcserver.com/u/yourname</strong>. Anyone can send you an encrypted message without knowing your key in advance — just your username.</p>
+    </div>
+    <div class="card" style="padding:1.4rem">
+      <div style="font-size:1.3rem;margin-bottom:.6rem">🔌</div>
+      <div style="font-family:var(--sans);font-weight:700;color:var(--bright);margin-bottom:.4rem">Embeddable Widget</div>
+      <p style="font-size:.75rem;color:var(--text-mid);line-height:1.7">Add a "Send encrypted" button to any website with one line of HTML. The modal opens inline — users never leave your site. Supports username lookup, manual key paste, or no configuration.</p>
+    </div>
+  </div>
+</section>
+
+<!-- WIDGET INTEGRATION -->
+<section class="section">
+  <div class="eyebrow">Widget Integration</div>
+  <h2>One line. Any website.</h2>
+  <p class="section-sub">Add post-quantum encryption to onionmail.org, your website, or any web application.</p>
+
+  <div class="grid-2">
+    <div>
+      <p style="font-size:.75rem;color:var(--text-dim);margin-bottom:.8rem">Known recipient:</p>
+      <div class="code-block">&lt;script src="https://pqcserver.com/assets/widget.js"<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;data-recipient="alice_smith"&gt;&lt;/script&gt;</div>
+      <p style="font-size:.7rem;color:var(--text-dim);margin-top:.5rem">Widget auto-loads Alice's public key and opens at Step 2 (message).</p>
+
+      <p style="font-size:.75rem;color:var(--text-dim);margin-top:1.2rem;margin-bottom:.8rem">Unknown recipient — user picks:</p>
+      <div class="code-block">&lt;script src="https://pqcserver.com/assets/widget.js"&gt;&lt;/script&gt;</div>
+      <p style="font-size:.7rem;color:var(--text-dim);margin-top:.5rem">Step 1 shows username lookup + manual key paste. Perfect for email clients.</p>
+    </div>
+    <div>
+      <p style="font-size:.75rem;color:var(--text-dim);margin-bottom:.8rem">The modal guides users through 3 steps:</p>
+      <div class="card">
+        <div class="card-body" style="font-size:.75rem;color:var(--text-mid);line-height:2">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:.5rem">
+            <div style="width:22px;height:22px;border-radius:50%;border:1px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:.65rem;color:var(--accent)">1</div>
+            <div><strong style="color:var(--bright)">Recipient</strong> — username lookup or paste public key</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:.5rem">
+            <div style="width:22px;height:22px;border-radius:50%;border:1px solid rgba(0,212,255,.3);display:flex;align-items:center;justify-content:center;font-size:.65rem;color:var(--text-dim)">2</div>
+            <div><strong style="color:var(--bright)">Message</strong> — text + optional file attachment</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:22px;height:22px;border-radius:50%;border:1px solid rgba(0,212,255,.3);display:flex;align-items:center;justify-content:center;font-size:.65rem;color:var(--text-dim)">3</div>
+            <div><strong style="color:var(--bright)">Done</strong> — copy shortlink, paste anywhere</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- VS PGP -->
+<section class="section">
+  <div class="eyebrow">Comparison</div>
+  <h2>PQCServer vs PGP</h2>
+  <p class="section-sub">Why post-quantum matters — and why the user experience matters equally.</p>
+
+  <div class="card">
+    <div class="card-body" style="padding:0">
+      <table class="compare-table" style="width:100%">
+        <thead>
+          <tr>
+            <th style="padding-left:1rem">Feature</th>
+            <th>PGP (RSA/ECC)</th>
+            <th>PQCServer (ML-KEM)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding-left:1rem">Quantum resistance</td>
+            <td class="c-bad">✗ Broken by Shor's algorithm</td>
+            <td class="c-ok">✓ ML-KEM lattice-based</td>
+          </tr>
+          <tr>
+            <td style="padding-left:1rem">Installation required</td>
+            <td class="c-bad">✗ Plugin or desktop app</td>
+            <td class="c-ok">✓ Browser only, no install</td>
+          </tr>
+          <tr>
+            <td style="padding-left:1rem">Sharing mechanism</td>
+            <td>Copy/paste armored blocks</td>
+            <td class="c-ok">✓ Simple shortlink</td>
+          </tr>
+          <tr>
+            <td style="padding-left:1rem">File attachments</td>
+            <td>Limited by email clients</td>
+            <td class="c-ok">✓ Any size via GridFS</td>
+          </tr>
+          <tr>
+            <td style="padding-left:1rem">Key discovery</td>
+            <td>Manual key exchange</td>
+            <td class="c-ok">✓ Username lookup</td>
+          </tr>
+          <tr>
+            <td style="padding-left:1rem">NIST 2024 standard</td>
+            <td class="c-bad">✗ Legacy standards</td>
+            <td class="c-ok">✓ FIPS-203 / FIPS-204</td>
+          </tr>
+          <tr>
+            <td style="padding-left:1rem">Embeddable</td>
+            <td class="c-bad">✗ Standalone only</td>
+            <td class="c-ok">✓ One-line widget</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="section">
+  <div class="card" style="padding:2rem;text-align:center">
+    <div style="font-family:var(--sans);font-weight:800;font-size:1.6rem;color:var(--bright);margin-bottom:.5rem">Start encrypting in 30 seconds</div>
+    <p style="font-size:.8rem;color:var(--text-mid);margin-bottom:1.2rem">No installation. No credit card. Generate your post-quantum keypair now.</p>
+    <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
+      <a href="/keygen.html"   class="btn btn-primary">🔑 Generate my keys</a>
+      <a href="/encrypt.html"  class="btn btn-ghost">🔒 Encrypt a message</a>
+      <a href="/register.html" class="btn btn-ghost">Create account →</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <strong style="color:var(--text)">PQCServer</strong> — Post-Quantum Encrypted Messaging
+  &nbsp;|&nbsp; <a href="/">Home</a> · <a href="/features/vault.html">Vault</a> · <a href="/notary.html">Notary</a> · <a href="/about.html">About</a>
+  <br>
+  <a href="https://csrc.nist.gov/pubs/fips/203/final" target="_blank">NIST FIPS-203 (ML-KEM)</a> &nbsp;·&nbsp;
+  <a href="https://csrc.nist.gov/pubs/fips/204/final" target="_blank">NIST FIPS-204 (ML-DSA)</a>
+  &nbsp;|&nbsp; Zero-knowledge · No tracking · Free
+</footer>
+
+<script src="/assets/auth.js"></script>
+<script>PQC.initTopbar();</script>
+</body>
+</html>

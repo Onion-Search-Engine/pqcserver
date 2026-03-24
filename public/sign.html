@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PQCServer — Sign Document</title>
+<meta name="description" content="Sign documents with post-quantum ML-DSA signatures. Get a cryptographic timestamp certificate stored on PQCServer.">
+<link rel="stylesheet" href="/assets/style.css">
+<style>
+.progress-wrap {
+  height:4px; background:var(--border); border-radius:2px;
+  overflow:hidden; margin-top:8px; display:none;
+}
+.progress-bar {
+  height:100%; width:0%; background:var(--accent);
+  transition:width .3s ease; border-radius:2px;
+}
+.hash-display {
+  font-family:var(--mono); font-size:.65rem; color:var(--accent);
+  background:var(--bg); border:1px solid var(--border);
+  border-radius:4px; padding:8px 12px; word-break:break-all;
+  line-height:1.6; margin-top:6px;
+}
+.cert-block {
+  background:var(--bg); border:1px solid rgba(0,229,160,.3);
+  border-radius:6px; padding:14px; font-size:.68rem;
+  color:var(--text-mid); line-height:1.7; white-space:pre-wrap;
+  word-break:break-all; max-height:280px; overflow-y:auto;
+}
+.drop-area {
+  border:2px dashed var(--border); border-radius:8px;
+  padding:2.5rem 1.5rem; text-align:center; cursor:pointer;
+  transition:all .2s; position:relative;
+}
+.drop-area:hover, .drop-area.drag-over {
+  border-color:rgba(0,212,255,.4);
+  background:rgba(0,212,255,.03);
+}
+.drop-area input[type=file] {
+  position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%;
+}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="/" class="topbar-logo"><div class="logo-pulse"></div>PQCServer</a>
+  <nav class="topbar-nav" id="topbar-nav"></nav>
+</div>
+
+<div class="page">
+  <div class="step-label">Cryptographic Timestamp</div>
+  <div class="page-title">Sign a document</div>
+  <p class="page-sub">
+    Sign any file or text with your ML-DSA private key. PQCServer records the
+    signature and timestamp — creating a verifiable certificate anyone can check.
+    Your document never leaves your browser.
+  </p>
+
+  <div class="info-box">
+    <strong>How it works:</strong> Your browser computes a SHA-256 hash of the document,
+    signs it with your ML-DSA key, and sends only the <strong>hash + signature</strong>
+    to PQCServer. The document itself is never uploaded.
+    Anyone can verify the certificate using the public key.
+  </div>
+
+  <!-- STEP 1 — Document -->
+  <div class="card">
+    <div class="card-head"><span class="accent">1</span> — Document to sign</div>
+    <div class="card-body">
+      <div class="form-group">
+        <label>Upload a file</label>
+        <div class="drop-area" id="drop-area">
+          <input type="file" id="file-input" onchange="onFileSelected(this.files[0])">
+          <div style="font-size:1.8rem;margin-bottom:.5rem">📄</div>
+          <div style="font-size:.78rem;color:var(--text-dim)">
+            Click to select or drag &amp; drop<br>
+            <span style="font-size:.65rem">PDF, DOCX, TXT, images — any file type</span>
+          </div>
+        </div>
+        <div id="file-info" style="display:none;margin-top:.8rem">
+          <div style="display:flex;align-items:center;gap:10px;font-size:.8rem;color:var(--text)">
+            <span id="file-icon" style="font-size:1.3rem">📄</span>
+            <div>
+              <div id="file-name" style="color:var(--bright)"></div>
+              <div id="file-size" style="font-size:.7rem;color:var(--text-dim)"></div>
+            </div>
+            <button onclick="clearFile()" style="
+              margin-left:auto;background:none;border:none;
+              color:var(--text-dim);cursor:pointer;font-size:1rem">✕</button>
+          </div>
+          <div style="margin-top:.6rem;font-size:.65rem;color:var(--text-dim)">SHA-256 hash:</div>
+          <div class="hash-display" id="doc-hash">Computing…</div>
+        </div>
+      </div>
+
+      <div style="font-size:.7rem;color:var(--text-dim);margin:1rem 0;text-align:center">
+        — or sign a text message directly —
+      </div>
+
+      <div class="form-group">
+        <label>Text to sign <span style="color:var(--text-dim)">(optional — used if no file selected)</span></label>
+        <textarea id="text-input" rows="4"
+          placeholder="Paste a contract, statement, or any text you want to sign…"
+          oninput="onTextInput()"></textarea>
+        <div id="text-hash-wrap" style="display:none">
+          <div style="margin-top:.6rem;font-size:.65rem;color:var(--text-dim)">SHA-256 hash:</div>
+          <div class="hash-display" id="text-hash"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2 — Signer info -->
+  <div class="card">
+    <div class="card-head"><span class="accent">2</span> — Your identity</div>
+    <div class="card-body">
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Display name <span style="color:var(--text-dim)">(appears on certificate)</span></label>
+          <input type="text" id="display-name" placeholder="Alice Smith" maxlength="64">
+        </div>
+        <div class="form-group">
+          <label>Your ML-DSA Private Key <span style="color:var(--red)">⚠ never shared</span></label>
+          <textarea id="private-key-dsa" rows="3"
+            placeholder="Paste your ML-DSA private key (base64)…"
+            style="font-size:.68rem"></textarea>
+        </div>
+      </div>
+      <div class="info-box" style="font-size:.68rem;margin-top:.5rem">
+        Don't have a key yet?
+        <a href="/keygen.html" style="color:var(--accent)">Generate your ML-DSA keypair →</a>
+        Your private key is used locally and never transmitted to PQCServer.
+      </div>
+      <div class="form-group" style="margin-top:.8rem">
+        <label>Your ML-DSA Public Key <span style="color:var(--text-dim)">(included in certificate)</span></label>
+        <textarea id="public-key-dsa" rows="3"
+          placeholder="Paste your ML-DSA public key (base64)…"
+          style="font-size:.68rem"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIGN BUTTON -->
+  <div class="card">
+    <div class="card-body">
+      <div class="btn-row">
+        <button class="btn btn-primary" id="sign-btn" onclick="signDocument()">
+          ✏️ Sign &amp; Get Certificate
+        </button>
+      </div>
+      <div class="progress-wrap" id="progress-wrap">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+      <div id="sign-status"></div>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div id="result-card" style="display:none">
+    <div class="card" style="border-color:rgba(0,229,160,.35)">
+      <div class="card-head" style="color:var(--green)">✓ Document signed — certificate issued</div>
+      <div class="card-body">
+
+        <div class="form-group">
+          <label>Certificate ID — share this link to let anyone verify</label>
+          <div class="output-block">
+            <textarea id="cert-url" readonly rows="1"></textarea>
+            <button class="copy-btn" onclick="copyField('cert-url')">copy</button>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top:.8rem">
+          <label>Timestamp (UTC)</label>
+          <div style="font-size:.82rem;color:var(--bright)" id="cert-time"></div>
+        </div>
+
+        <div class="form-group" style="margin-top:.8rem">
+          <label>Document hash (SHA-256)</label>
+          <div class="hash-display" id="cert-hash"></div>
+        </div>
+
+        <div class="form-group" style="margin-top:.8rem">
+          <label>Full certificate JSON — save this for your records</label>
+          <div class="cert-block" id="cert-json"></div>
+        </div>
+
+        <div class="btn-row" style="margin-top:.8rem">
+          <button class="btn btn-success" onclick="downloadCertificate()">💾 Download certificate (.json)</button>
+          <button class="btn btn-ghost" onclick="window.open(document.getElementById('cert-url').value)">🔗 Open verify page</button>
+          <button class="btn btn-ghost" onclick="resetForm()">↺ Sign another document</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <strong style="color:var(--text)">PQCServer</strong> — Document signing &amp; timestamping with ML-DSA (NIST FIPS-204).
+  Your document never leaves your browser — only the SHA-256 hash is transmitted.
+  <br><a href="/">Home</a> · <a href="/verify.html">Verify a certificate</a> · <a href="/keygen.html">Get Keys</a> · <a href="/timestamp.html">About timestamps</a>
+</footer>
+
+<script src="/assets/auth.js"></script>
+<script type="module">
+import { loadCrypto, toB64, fromB64 } from '/assets/crypto.js';
+
+let currentHash  = null;
+let currentFile  = null;
+let certData     = null;
+let hashTimer    = null;
+
+PQC.initTopbar().then(session => {
+  if (session?.user) {
+    // Pre-fill display name if logged in
+    const u = session.user;
+    document.getElementById('display-name').value = u.display_name || u.username;
+    // Try to load keys from profile
+    loadKeysFromProfile(u.username);
+  }
+});
+
+async function loadKeysFromProfile(username) {
+  try {
+    const r = await fetch(`/api/pubkey.php?u=${username}`);
+    const d = await r.json();
+    if (d.ok && d.public_key_dsa) {
+      document.getElementById('public-key-dsa').value = d.public_key_dsa;
+    }
+  } catch(e) {}
+}
+
+// ── File handling ──────────────────────────────────────────────────────────
+window.onFileSelected = async function(file) {
+  if (!file) return;
+  currentFile = file;
+  const ext = file.name.split('.').pop().toLowerCase();
+  const icons = { pdf:'📄', docx:'📝', doc:'📝', txt:'📃', jpg:'🖼️', jpeg:'🖼️', png:'🖼️', zip:'🗜️' };
+  document.getElementById('file-icon').textContent = icons[ext] || '📄';
+  document.getElementById('file-name').textContent = file.name;
+  document.getElementById('file-size').textContent = formatSize(file.size);
+  document.getElementById('file-info').style.display = 'block';
+  document.getElementById('doc-hash').textContent = 'Computing SHA-256…';
+
+  const hash = await hashFile(file);
+  currentHash = hash;
+  document.getElementById('doc-hash').textContent = hash;
+
+  // Clear text input when file is selected
+  document.getElementById('text-input').value = '';
+  document.getElementById('text-hash-wrap').style.display = 'none';
+};
+
+window.clearFile = function() {
+  currentFile = null;
+  currentHash = null;
+  document.getElementById('file-input').value = '';
+  document.getElementById('file-info').style.display = 'none';
+  document.getElementById('doc-hash').textContent = '';
+};
+
+window.onTextInput = async function() {
+  const text = document.getElementById('text-input').value;
+  clearTimeout(hashTimer);
+  if (!text) {
+    document.getElementById('text-hash-wrap').style.display = 'none';
+    if (!currentFile) currentHash = null;
+    return;
+  }
+  hashTimer = setTimeout(async () => {
+    const hash = await hashText(text);
+    if (!currentFile) {
+      currentHash = hash;
+      document.getElementById('text-hash').textContent = hash;
+      document.getElementById('text-hash-wrap').style.display = 'block';
+    }
+  }, 300);
+};
+
+// Drag & drop
+const dropArea = document.getElementById('drop-area');
+dropArea.addEventListener('dragover', e => { e.preventDefault(); dropArea.classList.add('drag-over'); });
+dropArea.addEventListener('dragleave', () => dropArea.classList.remove('drag-over'));
+dropArea.addEventListener('drop', e => {
+  e.preventDefault(); dropArea.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) window.onFileSelected(file);
+});
+
+// ── Crypto helpers ─────────────────────────────────────────────────────────
+async function hashFile(file) {
+  const ab = await file.arrayBuffer();
+  const digest = await crypto.subtle.digest('SHA-256', ab);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+async function hashText(text) {
+  const bytes = new TextEncoder().encode(text);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function setStatus(type, msg) {
+  document.getElementById('sign-status').innerHTML =
+    `<div class="status status-${type}">${msg}</div>`;
+}
+
+function setProgress(pct) {
+  const wrap = document.getElementById('progress-wrap');
+  const bar  = document.getElementById('progress-bar');
+  wrap.style.display = pct > 0 ? 'block' : 'none';
+  bar.style.width = pct + '%';
+}
+
+// ── Sign document ──────────────────────────────────────────────────────────
+window.signDocument = async function() {
+  const privKeyB64 = document.getElementById('private-key-dsa').value.trim();
+  const pubKeyB64  = document.getElementById('public-key-dsa').value.trim();
+  const dispName   = document.getElementById('display-name').value.trim();
+  const text       = document.getElementById('text-input').value;
+
+  if (!currentFile && !text) {
+    setStatus('fail', '✗ Select a file or enter text to sign'); return;
+  }
+  if (!privKeyB64) { setStatus('fail', '✗ Paste your ML-DSA private key'); return; }
+  if (!pubKeyB64)  { setStatus('fail', '✗ Paste your ML-DSA public key');  return; }
+
+  document.getElementById('sign-btn').disabled = true;
+  setProgress(10);
+  setStatus('info', '<span class="spinner"></span> Loading crypto library…');
+
+  try {
+    const { ml_dsa } = await loadCrypto();
+    setProgress(25);
+
+    // Compute hash if not already done
+    let docHash = currentHash;
+    let filename = '';
+    let fileSize = 0;
+
+    if (currentFile) {
+      filename = currentFile.name;
+      fileSize = currentFile.size;
+      if (!docHash) docHash = await hashFile(currentFile);
+    } else {
+      docHash = await hashText(text);
+    }
+
+    setStatus('info', '<span class="spinner"></span> Signing with ML-DSA…');
+    setProgress(50);
+
+    // Detect DSA variant from secret key length
+    const secKey = fromB64(privKeyB64);
+    let scheme, variant;
+    if      (secKey.length === 2560) { scheme = ml_dsa.ml_dsa44; variant = 'ML-DSA-44'; }
+    else if (secKey.length === 4032) { scheme = ml_dsa.ml_dsa65; variant = 'ML-DSA-65'; }
+    else if (secKey.length === 4896) { scheme = ml_dsa.ml_dsa87; variant = 'ML-DSA-87'; }
+    else throw new Error(`Unknown ML-DSA key length: ${secKey.length} bytes. Make sure you are using your ML-DSA private key.`);
+
+    // Sign the document hash (as bytes)
+    const hashBytes = new TextEncoder().encode(docHash);
+    const signature = scheme.sign(secKey, hashBytes);
+
+    setProgress(75);
+    setStatus('info', '<span class="spinner"></span> Recording timestamp…');
+
+    // Send to server
+    const r = await fetch('/api/timestamp.php', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        document_hash:  docHash,
+        signature:      toB64(signature),
+        public_key_dsa: pubKeyB64,
+        display_name:   dispName,
+        filename:       filename,
+        file_size:      fileSize,
+      }),
+    });
+    const d = await r.json();
+
+    if (!d.ok) throw new Error(d.error || 'Server error');
+
+    setProgress(100);
+    certData = d;
+
+    // Show result
+    document.getElementById('cert-url').value  = d.verify_url;
+    document.getElementById('cert-time').textContent = d.timestamp;
+    document.getElementById('cert-hash').textContent = docHash;
+    document.getElementById('cert-json').textContent = d.certificate;
+    document.getElementById('result-card').style.display = 'block';
+    document.getElementById('result-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setStatus('ok', `✓ Certificate issued — ID: ${d.id}`);
+
+  } catch(e) {
+    setStatus('fail', '✗ ' + e.message);
+    setProgress(0);
+  }
+  document.getElementById('sign-btn').disabled = false;
+};
+
+window.downloadCertificate = function() {
+  if (!certData) return;
+  const blob = new Blob([certData.certificate], { type: 'application/json' });
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = 'pqcserver-certificate-' + certData.id + '.json';
+  a.click();
+};
+
+window.resetForm = function() {
+  clearFile();
+  currentHash = null; certData = null;
+  ['display-name','private-key-dsa','public-key-dsa','text-input']
+    .forEach(id => { const e = document.getElementById(id); if(e) e.value = ''; });
+  document.getElementById('result-card').style.display = 'none';
+  document.getElementById('text-hash-wrap').style.display = 'none';
+  document.getElementById('sign-status').innerHTML = '';
+  setProgress(0);
+};
+
+window.copyField = function(id) {
+  const el = document.getElementById(id); if (!el) return;
+  navigator.clipboard.writeText(el.value).then(() => {
+    const btn = el.closest('.output-block')?.querySelector('.copy-btn');
+    if (btn) { btn.textContent = 'copied!'; setTimeout(() => btn.textContent = 'copy', 1500); }
+  });
+};
+
+function formatSize(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+</script>
+</body>
+</html>

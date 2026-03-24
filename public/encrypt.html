@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PQCServer — Encrypt Message</title>
+<link rel="stylesheet" href="/assets/style.css">
+<style>
+.progress-wrap {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  overflow: hidden;
+  height: 6px;
+  margin-top: 8px;
+  display: none;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  width: 0%;
+  transition: width .3s ease;
+}
+.progress-label {
+  font-size: .65rem;
+  color: var(--text-dim);
+  margin-top: 4px;
+  display: none;
+}
+.file-drop {
+  border: 2px dashed var(--border);
+  border-radius: 6px;
+  padding: 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all .2s;
+  position: relative;
+}
+.file-drop:hover, .file-drop.drag-over {
+  border-color: rgba(0,212,255,.4);
+  background: rgba(0,212,255,.03);
+}
+.file-drop input[type=file] {
+  position: absolute; inset: 0;
+  opacity: 0; cursor: pointer;
+  width: 100%; height: 100%;
+}
+.file-drop-icon { font-size: 1.8rem; margin-bottom: .4rem; }
+.file-drop-text { font-size: .75rem; color: var(--text-dim); }
+.file-selected {
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(0,229,160,.05);
+  border: 1px solid rgba(0,229,160,.2);
+  border-radius: 5px; padding: 10px 14px;
+  font-size: .78rem; color: var(--text);
+}
+.file-selected .remove-file {
+  margin-left: auto; cursor: pointer;
+  color: var(--text-dim); font-size: 1rem;
+  background: none; border: none;
+  transition: color .2s;
+}
+.file-selected .remove-file:hover { color: var(--red); }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="/" class="topbar-logo"><div class="logo-pulse"></div>PQCServer</a>
+  <nav class="topbar-nav" id="topbar-nav"></nav>
+</div>
+
+<div class="page">
+  <div class="step-label">Encrypt</div>
+  <div class="page-title">Send an encrypted message</div>
+  <p class="page-sub">
+    Your message is encrypted in this browser using ML-KEM + AES-256-GCM.
+    Files are uploaded directly to GridFS — no size limits.
+    The server never sees your content.
+  </p>
+
+  <!-- RECIPIENT -->
+  <div class="card">
+    <div class="card-head"><span class="accent">1</span> — Recipient</div>
+    <div class="card-body">
+      <div class="grid-2">
+        <div class="form-group">
+          <label>PQCServer username</label>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="recipient-username" placeholder="e.g. alice_smith" style="flex:1">
+            <button class="btn btn-ghost" onclick="lookupUser()" style="white-space:nowrap">Look up →</button>
+          </div>
+          <div id="lookup-status" style="margin-top:5px"></div>
+        </div>
+        <div class="form-group">
+          <label>— or paste ML-KEM public key directly</label>
+          <textarea id="recipient-pubkey" placeholder="Paste ML-KEM public key (base64)…"
+                    rows="3" oninput="onManualKey()"></textarea>
+          <div id="manualkey-status" style="margin-top:4px"></div>
+        </div>
+      </div>
+      <div id="recipient-card" style="display:none;margin-top:.8rem">
+        <div class="info-box">
+          <strong id="recipient-name"></strong> found — public key loaded automatically.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MESSAGE -->
+  <div class="card">
+    <div class="card-head"><span class="accent">2</span> — Message</div>
+    <div class="card-body">
+      <div class="form-group">
+        <label>Text message</label>
+        <textarea id="plaintext" placeholder="Type your message here…" rows="6"></textarea>
+      </div>
+      <div class="form-group" style="margin-top:.8rem">
+        <label>File attachment <span style="color:var(--text-dim)">(optional — no size limit)</span></label>
+        <div id="file-drop-area" class="file-drop">
+          <input type="file" id="file-input" onchange="onFileSelected(this.files[0])">
+          <div class="file-drop-icon">📎</div>
+          <div class="file-drop-text">Click to select or drag & drop a file<br>
+            <span style="font-size:.65rem;color:var(--text-dim)">
+              Any type · No size limit · Encrypted before upload
+            </span>
+          </div>
+        </div>
+        <div id="file-selected-info" style="display:none"></div>
+        <div class="progress-wrap" id="file-progress-wrap">
+          <div class="progress-bar" id="file-progress-bar"></div>
+        </div>
+        <div class="progress-label" id="file-progress-label"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OPTIONS -->
+  <div class="card">
+    <div class="card-head"><span class="accent">3</span> — Options</div>
+    <div class="card-body">
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Message expires after</label>
+          <select id="ttl-days">
+            <option value="1">1 day</option>
+            <option value="3">3 days</option>
+            <option value="7">7 days</option>
+            <option value="30" selected>30 days</option>
+            <option value="90">90 days</option>
+            <option value="365">1 year</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Burn after read</label>
+          <select id="burn">
+            <option value="1" selected>Yes — delete on first open</option>
+            <option value="0">No — keep until expiry</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SEND -->
+  <div class="card">
+    <div class="card-body">
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="encryptMessage()" id="enc-btn">
+          🔒 Encrypt &amp; Generate Shortlink
+        </button>
+      </div>
+      <div id="enc-status"></div>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div id="result-card" style="display:none">
+    <div class="card" style="border-color:rgba(0,229,160,.3)">
+      <div class="card-head" style="color:var(--green)">✓ Message encrypted — share this shortlink</div>
+      <div class="card-body">
+        <div class="form-group">
+          <label>Shortlink — paste this anywhere</label>
+          <div class="output-block">
+            <textarea id="shortlink-out" readonly rows="1"></textarea>
+            <button class="copy-btn" onclick="copyField('shortlink-out')">copy</button>
+          </div>
+        </div>
+        <div id="result-meta" style="margin-top:.8rem;font-size:.72rem;color:var(--text-dim)"></div>
+        <div class="btn-row">
+          <button class="btn btn-ghost" onclick="resetForm()">↺ Encrypt another message</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <strong style="color:var(--text)">PQCServer</strong> — Encryption happens locally.
+  Files are encrypted before upload. The server never sees your plaintext.
+  <br><a href="/">Home</a> · <a href="/keygen.html">Get Keys</a>
+</footer>
+
+<script src="/assets/auth.js"></script>
+<script type="module">
+import { loadCrypto, encryptText, encryptAndUploadFile, fromB64 } from '/assets/crypto.js';
+
+let resolvedPubKey = null;
+let selectedFile   = null;
+
+// Init topbar
+PQC.initTopbar();
+loadCrypto(); // preload in background
+
+// ── Helpers ──
+function setStatus(id, type, msg) {
+  const e = document.getElementById(id);
+  if (e) e.innerHTML = `<div class="status status-${type}">${msg}</div>`;
+}
+
+function setProgress(pct, label) {
+  const wrap  = document.getElementById('file-progress-wrap');
+  const bar   = document.getElementById('file-progress-bar');
+  const lbl   = document.getElementById('file-progress-label');
+  if (wrap) wrap.style.display   = pct > 0 ? 'block' : 'none';
+  if (bar)  bar.style.width      = pct + '%';
+  if (lbl)  { lbl.style.display  = label ? 'block' : 'none'; lbl.textContent = label || ''; }
+}
+
+// ── File selection ──
+window.onFileSelected = function(file) {
+  if (!file) return;
+  selectedFile = file;
+  const sizeStr = file.size > 1024*1024
+    ? (file.size/1024/1024).toFixed(1) + ' MB'
+    : (file.size/1024).toFixed(1) + ' KB';
+  document.getElementById('file-drop-area').style.display = 'none';
+  document.getElementById('file-selected-info').style.display = 'block';
+  document.getElementById('file-selected-info').innerHTML = `
+    <div class="file-selected">
+      <span style="font-size:1.2rem">📄</span>
+      <div>
+        <div style="color:var(--bright);font-size:.82rem">${file.name}</div>
+        <div style="color:var(--text-dim);font-size:.68rem">${sizeStr} · ${file.type || 'unknown type'}</div>
+      </div>
+      <button class="remove-file" onclick="removeFile()" title="Remove file">✕</button>
+    </div>`;
+};
+
+window.removeFile = function() {
+  selectedFile = null;
+  document.getElementById('file-input').value = '';
+  document.getElementById('file-drop-area').style.display = 'block';
+  document.getElementById('file-selected-info').style.display = 'none';
+  setProgress(0, '');
+};
+
+// Drag & drop
+const dropArea = document.getElementById('file-drop-area');
+['dragenter','dragover'].forEach(e => dropArea.addEventListener(e, ev => {
+  ev.preventDefault(); dropArea.classList.add('drag-over');
+}));
+['dragleave','drop'].forEach(e => dropArea.addEventListener(e, ev => {
+  ev.preventDefault(); dropArea.classList.remove('drag-over');
+  if (e === 'drop' && ev.dataTransfer.files.length)
+    window.onFileSelected(ev.dataTransfer.files[0]);
+}));
+
+// ── Recipient lookup ──
+window.onManualKey = function() {
+  resolvedPubKey = null;
+  const val = document.getElementById('recipient-pubkey').value.trim();
+  if (val.length > 100) {
+    try {
+      const bytes = fromB64(val);
+      if ([800,1184,1568].includes(bytes.length)) {
+        setStatus('manualkey-status','ok',`✓ Valid ML-KEM-${bytes.length===800?512:bytes.length===1184?768:1024} key`);
+        resolvedPubKey = val;
+      } else {
+        setStatus('manualkey-status','warn',`⚠ Unexpected key length: ${bytes.length} bytes`);
+      }
+    } catch(e) { setStatus('manualkey-status','fail','✗ Invalid base64 key'); }
+  }
+};
+
+window.lookupUser = async function() {
+  const u = document.getElementById('recipient-username').value.trim().toLowerCase();
+  if (!u) { setStatus('lookup-status','fail','Enter a username'); return; }
+  setStatus('lookup-status','info','<span class="spinner"></span> Looking up…');
+  try {
+    const r = await fetch(`/api/pubkey.php?u=${encodeURIComponent(u)}`);
+    const d = await r.json();
+    if (d.ok) {
+      resolvedPubKey = d.public_key_kem;
+      document.getElementById('recipient-pubkey').value = d.public_key_kem;
+      document.getElementById('recipient-name').textContent = d.display_name || u;
+      document.getElementById('recipient-card').style.display = 'block';
+      setStatus('lookup-status','ok',`✓ Found: ${d.display_name || u}`);
+    } else if (d.not_found) {
+      setStatus('lookup-status','warn','⚠ User not found. Paste their public key manually.');
+    } else {
+      setStatus('lookup-status','fail','✗ ' + d.error);
+    }
+  } catch(e) { setStatus('lookup-status','fail','✗ Network error'); }
+};
+
+// ── Main encrypt ──
+window.encryptMessage = async function() {
+  const pubKeyB64 = (resolvedPubKey || document.getElementById('recipient-pubkey').value).trim();
+  const text      = document.getElementById('plaintext').value;
+  const ttlDays   = parseInt(document.getElementById('ttl-days').value) || 30;
+  const burn      = document.getElementById('burn').value === '1';
+
+  if (!pubKeyB64) { setStatus('enc-status','fail','✗ Enter recipient username or paste their public key'); return; }
+  if (!text && !selectedFile) { setStatus('enc-status','fail','✗ Write a message or attach a file'); return; }
+
+  const encBtn = document.getElementById('enc-btn');
+  encBtn.disabled = true;
+
+  try {
+    setStatus('enc-status','info','<span class="spinner"></span> Loading crypto library…');
+    await loadCrypto();
+
+    // Step 1 — Encrypt text
+    setStatus('enc-status','info','<span class="spinner"></span> Encrypting message…');
+    const { envelope, sharedSecret } = await encryptText(pubKeyB64, text || '');
+
+    // Step 2 — Upload file (if any)
+    let fileId = null;
+    if (selectedFile) {
+      setStatus('enc-status','info','<span class="spinner"></span> Encrypting and uploading file…');
+      setProgress(1, 'Preparing file…');
+
+      fileId = await encryptAndUploadFile(sharedSecret, selectedFile, (stage, pct) => {
+        const labels = {
+          reading:    'Reading file…',
+          encrypting: 'Encrypting file…',
+          uploading:  'Uploading encrypted file…',
+          done:       'File uploaded!',
+        };
+        setProgress(pct, labels[stage] || '');
+      });
+
+      setProgress(100, '✓ File uploaded and encrypted');
+    }
+
+    // Step 3 — Store message
+    setStatus('enc-status','info','<span class="spinner"></span> Saving to server…');
+    const r = await fetch('/api/store.php', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ciphertext:      envelope,
+        recipient:       document.getElementById('recipient-username').value.trim() || null,
+        file_id:         fileId,
+        burn_after_read: burn,
+        ttl_days:        ttlDays,
+      }),
+    });
+    const d = await r.json();
+
+    if (d.ok) {
+      document.getElementById('shortlink-out').value = d.shortlink;
+      document.getElementById('result-meta').innerHTML =
+        `Expires: <strong style="color:var(--text)">${d.expires}</strong> &nbsp;|&nbsp; ` +
+        `Burn after read: <strong style="color:var(--text)">${d.burn ? 'Yes' : 'No'}</strong>` +
+        (d.has_file ? ' &nbsp;|&nbsp; <span style="color:var(--accent)">📎 File attached</span>' : '');
+      document.getElementById('result-card').style.display = 'block';
+      document.getElementById('result-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setStatus('enc-status','ok','✓ Encrypted and ready to share!');
+      setProgress(0, '');
+    } else {
+      throw new Error(d.error || 'Server error');
+    }
+  } catch(e) {
+    setStatus('enc-status','fail','✗ ' + e.message);
+    setProgress(0, '');
+  }
+  encBtn.disabled = false;
+};
+
+window.resetForm = function() {
+  document.getElementById('plaintext').value = '';
+  document.getElementById('recipient-pubkey').value = '';
+  document.getElementById('recipient-username').value = '';
+  document.getElementById('recipient-card').style.display = 'none';
+  document.getElementById('result-card').style.display = 'none';
+  window.removeFile();
+  resolvedPubKey = null;
+  ['enc-status','lookup-status','manualkey-status'].forEach(id => {
+    const e = document.getElementById(id); if (e) e.innerHTML = '';
+  });
+};
+
+window.copyField = function(id) {
+  const el = document.getElementById(id); if (!el) return;
+  navigator.clipboard.writeText(el.value).then(() => {
+    const btn = el.closest('.output-block')?.querySelector('.copy-btn');
+    if (btn) { btn.textContent = 'copied!'; setTimeout(() => btn.textContent = 'copy', 1500); }
+  });
+};
+</script>
+</body>
+</html>

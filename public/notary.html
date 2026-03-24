@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PQCServer Notary — Quantum-Safe Document Timestamping</title>
+<meta name="description" content="Sign and timestamp documents with post-quantum ML-DSA signatures. Prove a document existed at a specific time. Publicly verifiable. Free.">
+<link rel="stylesheet" href="/assets/style.css">
+<style>
+.hero-notary {
+  min-height: 90vh;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 100px 1.5rem 4rem;
+  max-width: 900px; margin: 0 auto;
+  position: relative; z-index: 1;
+}
+
+.hero-tag {
+  font-size: .62rem; letter-spacing: 2.5px; text-transform: uppercase;
+  color: var(--accent2); margin-bottom: 1.5rem;
+  display: flex; align-items: center; gap: 10px;
+}
+.hero-tag::before {
+  content: ''; width: 18px; height: 1px;
+  background: var(--accent2); display: inline-block;
+}
+
+.hero-notary h1 {
+  font-family: var(--sans); font-weight: 800;
+  font-size: clamp(2.2rem, 5vw, 3.8rem);
+  color: var(--bright); line-height: 1.08;
+  letter-spacing: -1px; margin-bottom: 1.2rem;
+}
+
+.hero-notary h1 em { font-style: italic; color: var(--text-mid); }
+.hero-notary h1 .hl { color: var(--accent2); }
+
+.hero-desc {
+  font-size: .92rem; color: var(--text-mid);
+  max-width: 520px; line-height: 1.8; margin-bottom: 2.5rem;
+}
+
+/* How it works */
+.how-grid {
+  display: grid; grid-template-columns: repeat(4,1fr);
+  gap: 1px; background: var(--border);
+  border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+}
+
+.how-step {
+  background: var(--surface); padding: 1.5rem 1.2rem;
+  transition: background .2s;
+}
+.how-step:hover { background: var(--surface2); }
+.how-num {
+  font-family: var(--sans); font-size: 2.2rem; font-weight: 800;
+  color: var(--border); margin-bottom: .8rem; line-height: 1;
+}
+.how-title {
+  font-family: var(--sans); font-weight: 700;
+  color: var(--bright); font-size: .9rem; margin-bottom: .4rem;
+}
+.how-body { font-size: .72rem; color: var(--text-mid); line-height: 1.6; }
+
+/* Receipt anatomy */
+.receipt-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 1.5rem;
+  font-family: var(--mono); font-size: .7rem;
+  line-height: 1.8; overflow-x: auto;
+}
+.receipt-box .key { color: var(--text-dim); }
+.receipt-box .val { color: var(--accent3, #00e5a0); }
+.receipt-box .val-dim { color: var(--accent); }
+.receipt-box .section {
+  color: var(--accent2); margin-top: .8rem; margin-bottom: .2rem;
+  font-size: .65rem; letter-spacing: 1px;
+}
+
+/* Use cases */
+.use-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem;
+}
+.use-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 1.4rem;
+  transition: border-color .2s;
+}
+.use-card:hover { border-color: rgba(124,58,237,.3); }
+.use-icon { font-size: 1.4rem; margin-bottom: .7rem; }
+.use-title {
+  font-family: var(--sans); font-weight: 700;
+  color: var(--bright); font-size: .9rem; margin-bottom: .4rem;
+}
+.use-body { font-size: .74rem; color: var(--text-mid); line-height: 1.7; }
+
+/* Legal status */
+.legal-grid {
+  display: grid; grid-template-columns: repeat(3,1fr);
+  gap: 1.2rem;
+}
+.legal-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 1.4rem; text-align: center;
+}
+.legal-flag { font-size: 1.8rem; margin-bottom: .5rem; }
+.legal-name {
+  font-family: var(--sans); font-weight: 700;
+  color: var(--bright); font-size: .88rem; margin-bottom: .3rem;
+}
+.legal-status {
+  font-size: .7rem; padding: 3px 10px; border-radius: 3px;
+  display: inline-block; margin-bottom: .6rem;
+}
+.ls-growing { background: rgba(0,229,160,.08); border: 1px solid rgba(0,229,160,.2); color: var(--green); }
+.ls-flexible { background: rgba(0,212,255,.08); border: 1px solid rgba(0,212,255,.2); color: var(--accent); }
+.ls-evolving { background: rgba(255,165,2,.08); border: 1px solid rgba(255,165,2,.2); color: var(--warn); }
+.legal-body { font-size: .7rem; color: var(--text-mid); line-height: 1.6; }
+
+/* CTA band */
+.cta-band {
+  background: linear-gradient(135deg, rgba(124,58,237,.1), rgba(0,212,255,.06));
+  border: 1px solid rgba(124,58,237,.25);
+  border-radius: 8px; padding: 2.5rem; text-align: center;
+  max-width: 900px; margin: 0 auto 3rem;
+}
+
+@media(max-width:700px) {
+  .how-grid { grid-template-columns: 1fr 1fr; }
+  .use-grid,.legal-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="/" class="topbar-logo"><div class="logo-pulse"></div>PQCServer</a>
+  <nav class="topbar-nav" id="topbar-nav">
+    <a href="/notary.html" style="color:var(--accent2)" class="hide-mobile">Notary</a>
+    <a href="/sign.html" class="btn-nav" style="background:rgba(124,58,237,.15);border-color:rgba(124,58,237,.35);color:#a78bfa">Sign Document →</a>
+  </nav>
+</div>
+
+<!-- HERO -->
+<div class="hero-notary">
+  <div class="hero-tag">PQCServer Notary · ML-DSA FIPS-204 · Quantum-Safe</div>
+  <h1>
+    Prove your document<br>
+    <em>existed, unchanged,</em><br>
+    <span class="hl">at this exact moment</span>
+  </h1>
+  <p class="hero-desc">
+    Sign any document with a post-quantum ML-DSA signature.
+    The server adds a cryptographic timestamp. Anyone can verify the
+    receipt — forever. Your document never leaves your browser.
+  </p>
+  <div style="display:flex;gap:1rem;flex-wrap:wrap">
+    <a href="/sign.html" class="btn btn-primary"
+       style="background:linear-gradient(135deg,rgba(124,58,237,.2),rgba(0,212,255,.1));border-color:rgba(124,58,237,.4);color:#a78bfa;padding:12px 26px;font-size:.85rem">
+      ✍️ Sign a document
+    </a>
+    <a href="/verify.html" class="btn btn-ghost" style="padding:12px 26px;font-size:.85rem">
+      ✔️ Verify a receipt
+    </a>
+  </div>
+</div>
+
+<!-- TICKER -->
+<div style="border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--surface);padding:10px 0;overflow:hidden">
+  <div style="display:flex;animation:ticker 25s linear infinite;width:max-content">
+    <div style="font-family:var(--mono);font-size:.62rem;letter-spacing:1.5px;color:var(--text-dim);padding:0 2rem;white-space:nowrap">
+      NIST FIPS-204 · ML-DSA-65 SIGNATURE · SHA-256 + SHA-512 HASH · ZERO-KNOWLEDGE · DOCUMENT NEVER LEAVES BROWSER ·
+      PUBLICLY VERIFIABLE · QUANTUM-RESISTANT · PERMANENT RECEIPT · FREE · NIST FIPS-204 · ML-DSA-65 SIGNATURE ·
+      SHA-256 + SHA-512 HASH · ZERO-KNOWLEDGE · DOCUMENT NEVER LEAVES BROWSER · PUBLICLY VERIFIABLE ·
+    </div>
+  </div>
+</div>
+<style>@keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}</style>
+
+<!-- HOW IT WORKS -->
+<section style="max-width:900px;margin:0 auto;padding:4rem 1.5rem">
+  <div class="step-label">How it works</div>
+  <div class="page-title" style="margin-bottom:.5rem">Four steps. Permanent proof.</div>
+  <p class="page-sub">Your document is hashed locally — the server only receives the fingerprint.</p>
+
+  <div class="how-grid" style="margin-top:1.5rem">
+    <div class="how-step">
+      <div class="how-num">01</div>
+      <div class="how-title">Hash locally</div>
+      <p class="how-body">Your browser computes SHA-256 and SHA-512 fingerprints of the document. The file itself stays on your device — zero bytes uploaded.</p>
+    </div>
+    <div class="how-step">
+      <div class="how-num">02</div>
+      <div class="how-title">Sign with ML-DSA</div>
+      <p class="how-body">You sign the hash with your ML-DSA private key (NIST FIPS-204). The signature mathematically proves you authorized this exact document.</p>
+    </div>
+    <div class="how-step">
+      <div class="how-num">03</div>
+      <div class="how-title">Server timestamps</div>
+      <p class="how-body">PQCServer adds a certified timestamp and countersignature. This anchors the document to a precise moment in time.</p>
+    </div>
+    <div class="how-step">
+      <div class="how-num">04</div>
+      <div class="how-title">Notary Receipt</div>
+      <p class="how-body">You receive a JSON receipt with a permanent verify URL. Anyone can check it anytime — no account needed to verify.</p>
+    </div>
+  </div>
+</section>
+
+<!-- RECEIPT ANATOMY -->
+<section style="max-width:900px;margin:0 auto;padding:0 1.5rem 4rem">
+  <div class="step-label">The Receipt</div>
+  <div class="page-title" style="margin-bottom:.5rem">What you get</div>
+  <p class="page-sub">A self-contained cryptographic proof. Download it as JSON or share the verify URL.</p>
+
+  <div class="receipt-box" style="margin-top:1.5rem">
+    <span class="section">// NOTARY RECEIPT — pqcserver.com</span><br>
+    <span class="key">"receipt_id":  </span><span class="val">"NTR-x7k2p9abcd"</span>,<br>
+    <span class="key">"verify_url":  </span><span class="val">"https://pqcserver.com/verify/NTR-x7k2p9abcd"</span>,<br><br>
+    <span class="section">// DOCUMENT FINGERPRINT (never the file itself)</span><br>
+    <span class="key">"document": </span>{<br>
+    &nbsp;&nbsp;<span class="key">"hash_sha256": </span><span class="val-dim">"a3f9c2e1..."</span>,<br>
+    &nbsp;&nbsp;<span class="key">"hash_sha512": </span><span class="val-dim">"7bc2d4f8..."</span>,<br>
+    &nbsp;&nbsp;<span class="key">"filename":    </span><span class="val">"contratto_2026.pdf"</span>,<br>
+    &nbsp;&nbsp;<span class="key">"size_bytes":  </span><span class="val">245120</span><br>
+    },<br><br>
+    <span class="section">// YOUR ML-DSA SIGNATURE</span><br>
+    <span class="key">"signature": </span>{<br>
+    &nbsp;&nbsp;<span class="key">"algorithm":  </span><span class="val">"ML-DSA-65"</span>,<br>
+    &nbsp;&nbsp;<span class="key">"value":       </span><span class="val-dim">"MEQCIA..."</span>,<br>
+    &nbsp;&nbsp;<span class="key">"signed_at":  </span><span class="val">"2026-03-17T11:30:00Z"</span><br>
+    },<br><br>
+    <span class="section">// SERVER TIMESTAMP + COUNTERSIGNATURE</span><br>
+    <span class="key">"timestamp": </span>{<br>
+    &nbsp;&nbsp;<span class="key">"server":           </span><span class="val">"pqcserver.com"</span>,<br>
+    &nbsp;&nbsp;<span class="key">"issued_at":        </span><span class="val">"2026-03-17T11:30:02Z"</span>,<br>
+    &nbsp;&nbsp;<span class="key">"server_signature": </span><span class="val-dim">"ABCDEF..."</span>,<br>
+    &nbsp;&nbsp;<span class="key">"server_public_key":</span><span class="val-dim">"base64..."</span><br>
+    }
+  </div>
+</section>
+
+<!-- USE CASES -->
+<section style="max-width:900px;margin:0 auto;padding:0 1.5rem 4rem">
+  <div class="step-label">Use cases</div>
+  <div class="page-title" style="margin-bottom:.5rem">Who uses it</div>
+  <div class="use-grid" style="margin-top:1.5rem">
+    <div class="use-card">
+      <div class="use-icon">⚖️</div>
+      <div class="use-title">Contracts & Agreements</div>
+      <p class="use-body">Prove a contract existed in its current form before signing with a traditional notary. Establish precedence in case of disputes about document contents or dates.</p>
+    </div>
+    <div class="use-card">
+      <div class="use-icon">💡</div>
+      <div class="use-title">Intellectual Property</div>
+      <p class="use-body">Timestamp creative works, inventions, research papers, or source code. Establish prior art without expensive patent filings during early development.</p>
+    </div>
+    <div class="use-card">
+      <div class="use-icon">🏥</div>
+      <div class="use-title">Medical & Clinical Records</div>
+      <p class="use-body">Prove a medical report was issued on a specific date. Verify a clinical protocol has not been modified retroactively. Critical for compliance and liability.</p>
+    </div>
+    <div class="use-card">
+      <div class="use-icon">📰</div>
+      <div class="use-title">Journalism & Evidence</div>
+      <p class="use-body">Journalists can timestamp sensitive documents and evidence. Prove source documents were unaltered before publication. Protect whistleblower materials.</p>
+    </div>
+    <div class="use-card">
+      <div class="use-icon">🏗️</div>
+      <div class="use-title">Construction & Real Estate</div>
+      <p class="use-body">Timestamp project drawings, permits, inspections, and site reports. Essential when disputes arise years after a project about the state of documentation at a given date.</p>
+    </div>
+    <div class="use-card">
+      <div class="use-icon">💻</div>
+      <div class="use-title">Software & Code Signing</div>
+      <p class="use-body">Sign software releases, configuration files, and security policies. Verify that code deployed in production matches the signed version. Detect tampering.</p>
+    </div>
+  </div>
+</section>
+
+<!-- LEGAL STATUS -->
+<section style="max-width:900px;margin:0 auto;padding:0 1.5rem 4rem">
+  <div class="step-label">Legal recognition</div>
+  <div class="page-title" style="margin-bottom:.4rem">Growing legal standing</div>
+  <p class="page-sub">
+    ML-DSA is a NIST federal standard (FIPS-204, Aug 2024). Legal recognition of PQC signatures
+    is actively evolving — the EU, US, and other jurisdictions are integrating it into their frameworks.
+  </p>
+
+  <div class="legal-grid" style="margin-top:1.5rem">
+    <div class="legal-card">
+      <div class="legal-flag">🇪🇺</div>
+      <div class="legal-name">European Union</div>
+      <div class="legal-status ls-evolving">Evolving — eIDAS 2.0</div>
+      <p class="legal-body">eIDAS 2.0 framework (2026) will incorporate PQC algorithms. ETSI is standardizing PQC signature profiles. ML-DSA receipts establish strong technical proof now, with formal legal recognition following the standards roadmap.</p>
+    </div>
+    <div class="legal-card">
+      <div class="legal-flag">🇺🇸</div>
+      <div class="legal-name">United States</div>
+      <div class="legal-status ls-flexible">Flexible — ESIGN Act</div>
+      <p class="legal-body">ESIGN Act recognizes electronic signatures broadly. NIST FIPS-204 is already a federal standard. ML-DSA receipts can be used as evidence in many commercial contexts. Federal agencies must adopt PQC by 2030.</p>
+    </div>
+    <div class="legal-card">
+      <div class="legal-flag">🌍</div>
+      <div class="legal-name">International</div>
+      <div class="legal-status ls-growing">Growing adoption</div>
+      <p class="legal-body">Many jurisdictions accept cryptographic evidence under electronic commerce laws. The UN Model Law on Electronic Commerce provides a broad framework. PQCServer receipts provide strong cryptographic proof admissible as evidence in most legal systems.</p>
+    </div>
+  </div>
+
+  <div class="info-box" style="margin-top:1.5rem">
+    <strong>Important:</strong> PQCServer Notary receipts provide strong cryptographic proof but are
+    not a substitute for notarized signatures in jurisdictions requiring them for specific document types
+    (real estate, wills, powers of attorney). Consult a legal professional for your specific use case.
+    The technical validity of ML-DSA signatures is absolute — legal recognition depends on jurisdiction.
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="cta-band" style="padding:0 1.5rem">
+  <div style="font-family:var(--sans);font-weight:800;font-size:1.8rem;color:var(--bright);margin-bottom:.5rem">
+    Ready to sign your first document?
+  </div>
+  <p style="font-size:.82rem;color:var(--text-mid);margin-bottom:1.5rem;max-width:440px;margin-left:auto;margin-right:auto">
+    Free. No size limit. Document never leaves your browser.
+    Permanent receipt. Publicly verifiable forever.
+  </p>
+  <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
+    <a href="/sign.html" class="btn btn-primary"
+       style="background:rgba(124,58,237,.2);border-color:rgba(124,58,237,.4);color:#a78bfa;padding:12px 24px">
+      ✍️ Sign a document
+    </a>
+    <a href="/verify.html" class="btn btn-ghost" style="padding:12px 24px">✔️ Verify a receipt</a>
+    <a href="/keygen.html" class="btn btn-ghost" style="padding:12px 24px">🔑 Get your keys first</a>
+  </div>
+</div>
+
+<footer>
+  <strong style="color:var(--text)">PQCServer Notary</strong> — Post-Quantum Document Timestamping &nbsp;|&nbsp;
+  <a href="/sign.html">Sign</a> &nbsp;·&nbsp;
+  <a href="/verify.html">Verify</a> &nbsp;·&nbsp;
+  <a href="/">Home</a> &nbsp;·&nbsp;
+  <a href="https://csrc.nist.gov/pubs/fips/204/final" target="_blank">NIST FIPS-204</a>
+  <br>Documents never uploaded · Zero-knowledge · Free
+</footer>
+
+<script src="/assets/auth.js"></script>
+<script>PQC.initTopbar();</script>
+</body>
+</html>
