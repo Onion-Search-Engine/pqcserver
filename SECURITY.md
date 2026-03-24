@@ -12,7 +12,7 @@
 
 If you discover a security vulnerability in PQCServer, please report it responsibly:
 
-**Email:** security@pqcserver.com
+**Email:** info@onionsearchengine.com
 
 Include in your report:
 - Type of vulnerability (XSS, SQL injection, cryptographic weakness, etc.)

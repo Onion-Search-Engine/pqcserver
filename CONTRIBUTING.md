@@ -27,7 +27,7 @@ Open an issue with the `enhancement` label. Describe:
 
 ### 🔒 Security Vulnerabilities
 **Do NOT open a public issue for security vulnerabilities.**
-Email: security@pqcserver.com
+Email: info@onionsearchengine.com
 
 We follow responsible disclosure — we'll respond within 48 hours
 and coordinate a fix before public disclosure.
